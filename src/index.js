@@ -7,7 +7,6 @@ import { sequelize } from './models/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 // Rutas
-import authRoutes from './routes/auth.js';  // ← IMPORTANTE
 import consorciosRoutes from './routes/consorcios.js';
 import unidadesRoutes from './routes/unidades.js';
 import ticketsRoutes from './routes/tickets.js';
@@ -15,6 +14,7 @@ import proveedoresRoutes from './routes/proveedores.js';
 import expensasRoutes from './routes/expensas.js';
 import personasRoutes from './routes/personas.js';
 import usuariosRoutes from './routes/usuarios.js';
+import authRoutes from './routes/auth.js';  // ✅ AGREGAR ESTA LÍNEA
 
 dotenv.config();
 const app = express();
@@ -23,7 +23,9 @@ app.use(cors());
 app.use(helmet());
 app.use(express.json());
 
+// ================================
 // Conexión Sequelize
+// ================================
 (async () => {
   try {
     await sequelize.authenticate();
@@ -33,18 +35,22 @@ app.use(express.json());
   }
 })();
 
+// ================================
 // Swagger
+// ================================
 setupSwagger(app);
 
+// ================================
 // Rutas
-app.use('/auth', authRoutes);  // ← SIN /api/
-app.use('/api/personas', personasRoutes);
-app.use('/api/usuarios', usuariosRoutes);
-app.use('/api/consorcios', consorciosRoutes);
-app.use('/api/unidades', unidadesRoutes);
-app.use('/api/tickets', ticketsRoutes);
-app.use('/api/proveedores', proveedoresRoutes);
-app.use('/api/expensas', expensasRoutes);
+// ================================
+app.use('/personas', personasRoutes);
+app.use('/usuarios', usuariosRoutes);
+app.use('/consorcios', consorciosRoutes);
+app.use('/unidades', unidadesRoutes);
+app.use('/tickets', ticketsRoutes);
+app.use('/proveedores', proveedoresRoutes);
+app.use('/expensas', expensasRoutes);
+app.use('/auth', authRoutes);  // ✅ AGREGAR ESTA LÍNEA
 
 app.use(errorHandler);
 

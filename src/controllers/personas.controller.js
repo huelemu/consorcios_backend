@@ -1,4 +1,4 @@
-import { Persona } from '../models/persona.js';
+import  Persona  from '../models/persona.js';
 
 export const getPersonas = async (req, res) => {
   try {

@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import { sequelize } from './index.js';
 
-export const Persona = sequelize.define('Persona', {
+const Persona = sequelize.define('Persona', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -15,7 +15,7 @@ export const Persona = sequelize.define('Persona', {
     type: DataTypes.STRING(100),
     allowNull: true
   },
-  documento: {
+  documento: {  // ✅ CAMBIO: era "dni", ahora "documento"
     type: DataTypes.STRING(20),
     allowNull: true
   },
@@ -31,28 +31,29 @@ export const Persona = sequelize.define('Persona', {
     type: DataTypes.STRING(150),
     allowNull: true
   },
-  localidad: {
+  localidad: {  // ✅ NUEVO: faltaba este campo
     type: DataTypes.STRING(100),
     allowNull: true
   },
-  provincia: {
+  provincia: {  // ✅ NUEVO: faltaba este campo
     type: DataTypes.STRING(100),
     allowNull: true
   },
-  pais: {
+  pais: {  // ✅ NUEVO: faltaba este campo
     type: DataTypes.STRING(50),
     allowNull: true
   },
-  tipo_persona: {
+  tipo_persona: {  // ✅ NUEVO: faltaba este campo
     type: DataTypes.ENUM('fisica', 'juridica'),
     defaultValue: 'fisica'
   },
   fecha_creacion: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-    field: 'fecha_creacion'
+    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'personas',
-  timestamps: false  // ← La BD no tiene createdAt/updatedAt
+  timestamps: false  // La tabla usa 'fecha_creacion' no 'createdAt/updatedAt'
 });
+
+export default Persona;

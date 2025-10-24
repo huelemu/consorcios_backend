@@ -1,8 +1,8 @@
 import sequelize from '../config/db.js';
 import Consorcio from './consorcio.js';
 import Unidad from './unidad.js';
-import { Persona } from './persona.js';
-import { Usuario } from './usuario.js';
+import Persona from './persona.js';
+import Usuario from './usuario.js';
 
 // ================================
 // Asociaciones (todas acá)
