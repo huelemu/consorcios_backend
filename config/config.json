@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "consorcio_dev",
+    "password": "piv8V8273a",
+    "database": "consorcio_dev",
+    "host": "200.55.247.209",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "consorcio_dev",
+    "password": "piv8V8273a",
+    "database": "consorcio_dev",
+    "host": "200.55.247.209",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "consorcio_dev",
+    "password": "piv8V8273a",
+    "database": "consorcio_dev",
+    "host": "200.55.247.209",
+    "dialect": "mysql"
+  }
+}
