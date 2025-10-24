@@ -1,9 +1,10 @@
 import express from 'express';
-import {
-  invitarUsuario,
-  verificarTokenInvitacion,
-  googleCallback,
-  reenviarInvitacion
+import { 
+  login, 
+  register, 
+  profile, 
+  googleLogin,
+  googleCallback 
 } from '../controllers/authController.js';
 
 const router = express.Router();
@@ -12,14 +13,14 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Autenticación
- *   description: Endpoints de autenticación y OAuth
+ *   description: Endpoints de login y registro
  */
 
 /**
  * @swagger
- * /auth/invitar-usuario:
+ * /api/auth/login:
  *   post:
- *     summary: Invitar a una persona para que se convierta en usuario
+ *     summary: Iniciar sesión tradicional
  *     tags: [Autenticación]
  *     requestBody:
  *       required: true
@@ -27,51 +28,40 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - persona_id
- *               - rol_global
  *             properties:
- *               persona_id:
- *                 type: integer
- *                 description: ID de la persona a invitar
- *               rol_global:
+ *               email:
  *                 type: string
- *                 enum: [admin_global, tenant_admin, admin_consorcio, admin_edificio, propietario, inquilino, proveedor]
+ *               password:
+ *                 type: string
  *     responses:
- *       201:
- *         description: Invitación enviada exitosamente
- *       400:
- *         description: Error de validación
- *       404:
- *         description: Persona no encontrada
+ *       200:
+ *         description: Usuario autenticado correctamente
  */
-router.post('/invitar-usuario', invitarUsuario);
+router.post('/login', login);
 
 /**
  * @swagger
- * /auth/verificar-token/{token}:
+ * /api/auth/register:
+ *   post:
+ *     summary: Registrar nuevo usuario
+ *     tags: [Autenticación]
+ */
+router.post('/register', register);
+
+/**
+ * @swagger
+ * /api/auth/profile:
  *   get:
- *     summary: Verificar si un token de invitación es válido
+ *     summary: Obtener perfil del usuario autenticado
  *     tags: [Autenticación]
- *     parameters:
- *       - in: path
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Token válido
- *       404:
- *         description: Token inválido o expirado
  */
-router.get('/verificar-token/:token', verificarTokenInvitacion);
+router.get('/profile', profile);
 
 /**
  * @swagger
- * /auth/google/callback:
+ * /api/auth/google:
  *   post:
- *     summary: Callback de autenticación con Google
+ *     summary: Login con Google OAuth
  *     tags: [Autenticación]
  *     requestBody:
  *       required: true
@@ -79,48 +69,36 @@ router.get('/verificar-token/:token', verificarTokenInvitacion);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - id_token
  *             properties:
- *               id_token:
+ *               credential:
  *                 type: string
- *                 description: Token de ID de Google
- *               invitacion_token:
- *                 type: string
- *                 description: Token de invitación (opcional, solo para activación)
+ *                 description: Token JWT de Google
  *     responses:
  *       200:
- *         description: Login/registro exitoso
- *       400:
- *         description: Error de validación
+ *         description: Usuario autenticado con Google exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *       401:
+ *         description: Token inválido
+ */
+router.post('/google', googleLogin);
+
+/**
+ * @swagger
+ * /api/auth/google/callback:
+ *   post:
+ *     summary: Callback de Google OAuth (alias)
+ *     tags: [Autenticación]
  */
 router.post('/google/callback', googleCallback);
 
-/**
- * @swagger
- * /auth/reenviar-invitacion:
- *   post:
- *     summary: Reenviar invitación a un usuario inactivo
- *     tags: [Autenticación]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - usuario_id
- *             properties:
- *               usuario_id:
- *                 type: integer
- *     responses:
- *       200:
- *         description: Invitación reenviada
- *       400:
- *         description: Usuario ya activo
- *       404:
- *         description: Usuario no encontrado
- */
-router.post('/reenviar-invitacion', reenviarInvitacion);
-
-export default router;  // ✅ ¡ESTA LÍNEA ES CRÍTICA!
+export default router;
