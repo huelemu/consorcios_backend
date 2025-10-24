@@ -94,3 +94,4 @@ export const googleLogin = async (req, res) => {
 
 // Alias para callback (mantiene compatibilidad con ambas rutas)
 export const googleCallback = googleLogin;
+
