@@ -5,8 +5,6 @@
 -- ==============================================
 
 
-
-
 -- CREATE DATABASE IF NOT EXISTS consorcio_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- USE consorcio_dev;
 SHOW TABLES;
@@ -43,12 +41,17 @@ CREATE TABLE usuarios (
     fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
     google_id VARCHAR(255) NULL UNIQUE,
     oauth_provider ENUM('local', 'google', 'microsoft') DEFAULT 'local',
-	email_verificado BOOLEAN DEFAULT FALSE,
+	email_verificado BOOLEAN DEFAULT FALSE COMMENT 'Indica si el email fue verificado', 
 	primer_login BOOLEAN DEFAULT TRUE,
 	invitacion_token VARCHAR(255) NULL,
 	invitacion_expira DATETIME NULL;
     FOREIGN KEY (persona_id) REFERENCES personas(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX IF NOT EXISTS idx_google_id ON usuarios(google_id);
+CREATE INDEX IF NOT EXISTS idx_oauth_provider ON usuarios(oauth_provider);
+CREATE INDEX IF NOT EXISTS idx_email ON usuarios(email);
+
 
 -- ==============================================
 -- Tabla: roles
