@@ -53,6 +53,7 @@ CREATE INDEX IF NOT EXISTS idx_oauth_provider ON usuarios(oauth_provider);
 CREATE INDEX IF NOT EXISTS idx_email ON usuarios(email);
 
 
+
 -- ==============================================
 -- Tabla: roles
 -- ==============================================

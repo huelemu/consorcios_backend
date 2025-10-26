@@ -4,7 +4,10 @@ import {
   getConsorcioById,
   createConsorcio,
   updateConsorcio,
-  deleteConsorcio
+  deleteConsorcio,
+  getConsorciosStats,
+  activarConsorcio,
+  desactivarConsorcio
 } from '../controllers/consorciosController.js';
 
 const router = express.Router();
@@ -13,39 +16,79 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Consorcios
- *   description: Administración de consorcios
+ *   description: Administración de consorcios/edificios
  */
 
 /**
  * @swagger
- * /api/consorcios:
+ * /consorcios:
  *   get:
- *     summary: Lista todos los consorcios
+ *     summary: Lista todos los consorcios con filtros y paginación
  *     tags: [Consorcios]
+ */
+router.get('/', getConsorcios);
+
+/**
+ * @swagger
+ * /consorcios/stats/general:
+ *   get:
+ *     summary: Obtiene estadísticas generales de consorcios
+ *     tags: [Consorcios]
+ */
+router.get('/stats/general', getConsorciosStats);
+
+/**
+ * @swagger
+ * /consorcios/{id}:
+ *   get:
+ *     summary: Obtiene un consorcio por ID
+ *     tags: [Consorcios]
+ */
+router.get('/:id', getConsorcioById);
+
+/**
+ * @swagger
+ * /consorcios:
  *   post:
  *     summary: Crea un nuevo consorcio
  *     tags: [Consorcios]
  */
-router.route('/')
-  .get(getConsorcios)
-  .post(createConsorcio);
+router.post('/', createConsorcio);
 
 /**
  * @swagger
- * /api/consorcios/{id}:
- *   get:
- *     summary: Obtiene un consorcio por ID
- *     tags: [Consorcios]
+ * /consorcios/{id}:
  *   put:
  *     summary: Actualiza un consorcio existente
  *     tags: [Consorcios]
+ */
+router.put('/:id', updateConsorcio);
+
+/**
+ * @swagger
+ * /consorcios/{id}:
  *   delete:
- *     summary: Elimina un consorcio
+ *     summary: Elimina (desactiva) un consorcio
  *     tags: [Consorcios]
  */
-router.route('/:id')
-  .get(getConsorcioById)
-  .put(updateConsorcio)
-  .delete(deleteConsorcio);
+router.delete('/:id', deleteConsorcio);
+
+/**
+ * @swagger
+ * /consorcios/{id}/activar:
+ *   patch:
+ *     summary: Activa un consorcio
+ *     tags: [Consorcios]
+ */
+router.patch('/:id/activar', activarConsorcio);
+
+/**
+ * @swagger
+ * /consorcios/{id}/desactivar:
+ *   patch:
+ *     summary: Desactiva un consorcio
+ *     tags: [Consorcios]
+ */
+router.patch('/:id/desactivar', desactivarConsorcio);
 
 export default router;
