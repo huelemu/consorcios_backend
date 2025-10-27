@@ -2,8 +2,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { OAuth2Client } from 'google-auth-library';
 import { sequelize } from '../models/index.js';
-import Usuario from '../models/usuario.js';
-import Persona from '../models/persona.js';
+import {Usuario} from '../models/usuario.js';
+import {Persona} from '../models/persona.js';
 import { randomBytes, createHash } from 'crypto'
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);

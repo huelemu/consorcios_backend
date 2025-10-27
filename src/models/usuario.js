@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from './index.js';
 
-const Usuario = sequelize.define('Usuario', {
+export const Usuario = sequelize.define('Usuario', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -86,5 +86,3 @@ const Usuario = sequelize.define('Usuario', {
   tableName: 'usuarios',
   timestamps: false // La tabla usa 'fecha_creacion' no 'createdAt/updatedAt'
 });
-
-export default Usuario;

@@ -1,5 +1,5 @@
-import Usuario from '../models/usuario.js';
-import Persona from '../models/persona.js';
+import {Usuario} from '../models/usuario.js';
+import {Persona} from '../models/persona.js';
 import { Op } from 'sequelize';
 
 /**

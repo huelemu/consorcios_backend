@@ -1,6 +1,6 @@
 import { Unidad, Consorcio, Persona, Ticket } from '../models/index.js';
 import { Op } from 'sequelize';
-import sequelize from '../config/db.js';
+import {sequelize} from '../config/db.js';
 
 /**
  * GET /api/unidades

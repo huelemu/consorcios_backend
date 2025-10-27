@@ -1,4 +1,4 @@
-import Persona from '../models/persona.js';
+import {Persona} from '../models/persona.js';
 import { Op } from 'sequelize';
 
 /**

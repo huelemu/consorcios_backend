@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import { sequelize } from '../config/db.js';
 
 /**
  * =========================================
@@ -7,7 +7,7 @@ import sequelize from '../config/db.js';
  * =========================================
  * Representa una unidad funcional dentro de un consorcio
  */
-const Unidad = sequelize.define('Unidad', {
+export const Unidad = sequelize.define('Unidad', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -58,5 +58,3 @@ const Unidad = sequelize.define('Unidad', {
   underscored: true,
   comment: 'Tabla de unidades funcionales'
 });
-
-export default Unidad;

@@ -1,7 +1,13 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import { sequelize } from '../config/db.js'; // ✅ mantener coherencia con otros modelos
 
-const Persona = sequelize.define('Persona', {
+/**
+ * =========================================
+ * MODELO: PERSONA
+ * =========================================
+ * Representa a personas físicas o jurídicas
+ */
+export const Persona = sequelize.define('Persona', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -9,19 +15,25 @@ const Persona = sequelize.define('Persona', {
   },
   nombre: {
     type: DataTypes.STRING(100),
-    allowNull: false
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'El nombre es obligatorio' }
+    }
   },
   apellido: {
     type: DataTypes.STRING(100),
     allowNull: true
   },
-  documento: {  // ✅ CAMBIO: era "dni", ahora "documento"
+  documento: {  // era "dni"
     type: DataTypes.STRING(20),
     allowNull: true
   },
   email: {
     type: DataTypes.STRING(150),
-    allowNull: true
+    allowNull: true,
+    validate: {
+      isEmail: { msg: 'Debe ser un email válido' }
+    }
   },
   telefono: {
     type: DataTypes.STRING(50),
@@ -31,19 +43,20 @@ const Persona = sequelize.define('Persona', {
     type: DataTypes.STRING(150),
     allowNull: true
   },
-  localidad: {  // ✅ NUEVO: faltaba este campo
+  localidad: {
     type: DataTypes.STRING(100),
     allowNull: true
   },
-  provincia: {  // ✅ NUEVO: faltaba este campo
+  provincia: {
     type: DataTypes.STRING(100),
     allowNull: true
   },
-  pais: {  // ✅ NUEVO: faltaba este campo
+  pais: {
     type: DataTypes.STRING(50),
-    allowNull: true
+    allowNull: true,
+    defaultValue: 'Argentina'
   },
-  tipo_persona: {  // ✅ NUEVO: faltaba este campo
+  tipo_persona: {
     type: DataTypes.ENUM('fisica', 'juridica'),
     defaultValue: 'fisica'
   },
@@ -53,7 +66,9 @@ const Persona = sequelize.define('Persona', {
   }
 }, {
   tableName: 'personas',
-  timestamps: false  // La tabla usa 'fecha_creacion' no 'createdAt/updatedAt'
+  timestamps: false,
+  indexes: [
+    { name: 'idx_persona_documento', fields: ['documento'] },
+    { name: 'idx_persona_email', fields: ['email'] }
+  ]
 });
-
-export default Persona;

@@ -1,6 +1,6 @@
 import { Consorcio, Usuario, Unidad, Persona } from '../models/index.js';
 import { Op } from 'sequelize';
-import sequelize from '../config/db.js';
+import {sequelize} from '../config/db.js';
 
 /**
  * =========================================
