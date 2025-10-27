@@ -26,4 +26,4 @@ export const ConsorcioProveedor = sequelize.define('ConsorcioProveedor', {
 }, {
   tableName: 'consorcios_proveedores',
   timestamps: false
-});
+}); 
