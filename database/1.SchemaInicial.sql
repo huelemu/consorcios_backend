@@ -118,6 +118,8 @@ CREATE TABLE unidades_funcionales (
     superficie DECIMAL(8,2),
     porcentaje_participacion DECIMAL(5,2),
     estado ENUM('ocupado','vacante','mantenimiento') DEFAULT 'ocupado',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
     FOREIGN KEY (consorcio_id) REFERENCES consorcios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
