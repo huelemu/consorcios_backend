@@ -65,57 +65,56 @@ export const getTickets = async (req, res) => {
 
     const where = {};
 
-    if (consorcioId) {
-      where.consorcio_id = consorcioId;
-    }
-
-    if (estado) {
-      ensureInList(estado, ESTADOS_TICKET, 'estado');
-      where.estado = estado;
-    }
-
-    if (prioridad) {
-      ensureInList(prioridad, PRIORIDADES_TICKET, 'prioridad');
-      where.prioridad = prioridad;
-    }
-
-    if (tipo) {
-      ensureInList(tipo, TIPOS_TICKET, 'tipo');
-      where.tipo = tipo;
-    }
-
-    if (search) {
-      where.descripcion = { [Op.like]: `%${search}%` };
-    }
-
-    const sanitizedSortBy = sanitizeSort(sortBy);
-    const sanitizedSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-
-    const pagination = {
-      limit: parseInt(limit, 10),
-      offset: (parseInt(page, 10) - 1) * parseInt(limit, 10),
-    };
+    if (consorcioId) where.consorcio_id = consorcioId;
+    if (estado) where.estado = estado;
+    if (prioridad) where.prioridad = prioridad;
+    if (tipo) where.tipo = tipo;
+    if (search) where.descripcion = { [Op.like]: `%${search}%` };
 
     const { rows, count } = await Ticket.findAndCountAll({
       where,
       include: TICKET_DEFAULT_INCLUDES,
-      order: [[sanitizedSortBy, sanitizedSortOrder]],
-      ...pagination,
+      order: [[sortBy, sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC']],
+      limit: parseInt(limit, 10),
+      offset: (parseInt(page, 10) - 1) * parseInt(limit, 10),
       distinct: true,
     });
 
-    res.json({
-      tickets: rows,
-      total: count,
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-      totalPages: Math.ceil(count / parseInt(limit, 10)),
-    });
+    const mapped = rows.map(t => ({
+      id: t.id,
+      titulo: t.descripcion?.substring(0, 40) || `Ticket #${t.id}`,
+      descripcion: t.descripcion,
+      prioridad: t.prioridad,
+      estado: t.estado,
+      tipo: t.tipo,
+      fechaCreacion: t.fecha_creacion,
+      fechaActualizacion: t.fecha_cierre,
+      consorcioId: t.consorcio_id,
+      consorcioNombre: t.consorcio?.nombre ?? 'N/D',
+      unidadId: t.unidad_id,
+      unidadNombre: t.unidad?.codigo ?? 'N/D',
+      creadoPorId: t.creado_por,
+      creadoPorNombre: t.creador?.username ?? 'Desconocido',
+      asignadoANombre: t.asignado?.username ?? null,
+      comentarios: [],
+      historial: [],
+      adjuntos: [],
+      notificaciones: {
+        notifyCreator: false,
+        notifyProvider: false,
+        notifyPropietario: false,
+        notifyInquilino: false,
+        notifyEncargado: false,
+      },
+    }));
+
+    res.json({ data: mapped, total: count });
   } catch (error) {
     console.error('Error al obtener tickets:', error);
-    res.status(error.status || 500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
+
 
 export const getTicketById = async (req, res) => {
   try {

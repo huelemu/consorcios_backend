@@ -1,4 +1,6 @@
 import express from 'express';
+import multer from 'multer';
+
 import {
   getConsorcios,
   getConsorcioById,
@@ -7,10 +9,12 @@ import {
   deleteConsorcio,
   getConsorciosStats,
   activarConsorcio,
-  desactivarConsorcio
+  desactivarConsorcio,
+  uploadConsorciosExcel
 } from '../controllers/consorciosController.js';
 
 const router = express.Router();
+const upload = multer({ dest: 'uploads/' });
 
 /**
  * @swagger
@@ -90,5 +94,7 @@ router.patch('/:id/activar', activarConsorcio);
  *     tags: [Consorcios]
  */
 router.patch('/:id/desactivar', desactivarConsorcio);
+
+router.post('/upload-excel', upload.single('file'), uploadConsorciosExcel);
 
 export default router;

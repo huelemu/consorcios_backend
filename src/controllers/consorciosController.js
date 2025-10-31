@@ -1,6 +1,9 @@
 import { Consorcio, Usuario, Unidad, Persona } from '../models/index.js';
 import { Op } from 'sequelize';
 import {sequelize} from '../config/db.js';
+import xlsx from 'xlsx';
+import fs from 'fs';
+
 
 /**
  * =========================================
@@ -200,6 +203,7 @@ export const createConsorcio = async (req, res) => {
   try {
     const {
       tenant_id,
+      codigo_ext,
       nombre,
       direccion,
       ciudad,
@@ -241,6 +245,7 @@ export const createConsorcio = async (req, res) => {
       tenant_id,
       nombre,
       direccion,
+      codigo_ext,
       ciudad,
       provincia,
       pais: pais || 'Argentina',
@@ -521,6 +526,110 @@ export const activarConsorcio = async (req, res) => {
 
 /**
  * =========================================
+ * POST /api/consorcios/upload-excel
+ * =========================================
+ * Carga masiva de consorcios desde un archivo Excel
+ * Permite que una misma columna del Excel se asigne a múltiples campos del modelo
+ */
+export const uploadConsorciosExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No se subió ningún archivo' });
+    }
+
+    // Leer el archivo Excel
+    const workbook = xlsx.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const data = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+    // Leer mapping del frontend (si existe)
+    const mapping = req.body.mapping ? JSON.parse(req.body.mapping) : null;
+
+    const consorciosParaInsertar = [];
+
+    for (const fila of data) {
+      const consorcio = {};
+
+      if (mapping && Object.keys(mapping).length > 0) {
+        // mapping: { "Nombre": ["nombre", "direccion"], "Ciudad": ["ciudad"] }
+        for (const [colExcel, camposBD] of Object.entries(mapping)) {
+          const valor = fila[colExcel];
+          if (valor !== undefined && valor !== null) {
+            for (const campo of camposBD) {
+              consorcio[campo] = valor;
+            }
+          }
+        }
+      } else {
+        // Fallback: mapeo estándar por nombres conocidos
+        const mapeoPorDefecto = {
+          codigo_ext: 'codigo',
+          Nombre: 'nombre',
+          Direccion: 'direccion',
+          Ciudad: 'ciudad',
+          Provincia: 'provincia',
+          Pais: 'pais',
+          CUIT: 'cuit',
+          Telefono: 'telefono_contacto',
+          Email: 'email_contacto',
+          'Responsable ID': 'responsable_id',
+          'Tenant ID': 'tenant_id'
+        };
+
+        for (const [columnaExcel, campoBD] of Object.entries(mapeoPorDefecto)) {
+          if (fila[columnaExcel] !== undefined && fila[columnaExcel] !== null) {
+            consorcio[campoBD] = fila[columnaExcel];
+          }
+        }
+      }
+
+      // Validaciones mínimas
+      if (!consorcio.nombre) {
+        console.warn('Fila sin nombre de consorcio, se omite:', fila);
+        continue;
+      }
+
+      // Defaults
+      consorcio.estado = 'activo';
+      if (!consorcio.pais) consorcio.pais = 'Argentina';
+
+      consorciosParaInsertar.push(consorcio);
+    }
+
+    if (!consorciosParaInsertar.length) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({
+        message: 'No se detectaron consorcios válidos para importar'
+      });
+    }
+
+    // Inserción masiva
+    const nuevosConsorcios = await Consorcio.bulkCreate(consorciosParaInsertar);
+
+    // Borrar archivo temporal
+    fs.unlinkSync(req.file.path);
+
+    res.status(201).json({
+      message: `${nuevosConsorcios.length} consorcios creados correctamente`,
+      data: nuevosConsorcios
+    });
+  } catch (error) {
+    console.error('Error al importar consorcios:', error);
+
+    // Intentar borrar el archivo temporal si existe
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(500).json({
+      message: 'Error al procesar el archivo Excel',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * =========================================
  * PATCH /api/consorcios/:id/desactivar
  * =========================================
  * Desactiva un consorcio
@@ -548,4 +657,5 @@ export const desactivarConsorcio = async (req, res) => {
     console.error('Error en desactivarConsorcio:', error);
     res.status(500).json({ error: error.message });
   }
+  
 };

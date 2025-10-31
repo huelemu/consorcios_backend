@@ -38,6 +38,10 @@ export const Consorcio = sequelize.define('Consorcio', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
+    codigo_ext: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
   pais: {
     type: DataTypes.STRING(50),
     allowNull: true,
