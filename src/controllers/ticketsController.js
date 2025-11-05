@@ -1,112 +1,124 @@
-import { Op } from 'sequelize';
-import {
+import { 
   Ticket,
   Consorcio,
   Unidad,
   Usuario,
+  TicketComentario,
+  TicketHistorial,
+  TicketAdjunto
 } from '../models/index.js';
-import { TICKET_CONSTANTS } from '../models/ticket.js';
+import { Op } from 'sequelize';
 
-const { TIPOS_TICKET, PRIORIDADES_TICKET, ESTADOS_TICKET } = TICKET_CONSTANTS;
+const TIPOS_TICKET = ['mantenimiento', 'reclamo', 'limpieza', 'administrativo', 'mejora', 'otro'];
+const PRIORIDADES_TICKET = ['baja', 'media', 'alta', 'critica'];
+const ESTADOS_TICKET = ['abierto', 'en_proceso', 'pendiente', 'resuelto', 'cerrado'];
 
 const TICKET_DEFAULT_INCLUDES = [
   {
     model: Consorcio,
     as: 'consorcio',
-    attributes: ['id', 'nombre'],
+    attributes: ['id', 'nombre', 'codigo_ext'],
+    required: false,
   },
   {
     model: Unidad,
     as: 'unidad',
-    attributes: ['id', 'codigo', 'piso'],
+    attributes: ['id', 'codigo', 'piso'], // ← SIN 'unidad'
+    required: false,
   },
   {
     model: Usuario,
     as: 'creador',
     attributes: ['id', 'username', 'email'],
+    required: false,
   },
   {
     model: Usuario,
     as: 'asignado',
     attributes: ['id', 'username', 'email'],
+    required: false,
   },
 ];
 
-const ensureInList = (value, list, fieldName) => {
-  if (value === undefined || value === null) return undefined;
+const ensureInList = (value, list, field) => {
   if (!list.includes(value)) {
-    const error = new Error(
-      `Valor inválido para ${fieldName}. Valores permitidos: ${list.join(', ')}`
-    );
-    error.status = 400;
-    throw error;
+    throw { status: 400, message: `Valor inválido para ${field}: ${value}` };
   }
-  return value;
 };
 
-const sanitizeSort = (field, fallback = 'fecha_creacion') => {
-  const allowedFields = ['fecha_creacion', 'prioridad', 'estado', 'id'];
-  return allowedFields.includes(field) ? field : fallback;
-};
-
+// ====================================
+// GET TICKETS CON FILTROS
+// ====================================
 export const getTickets = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
-      consorcioId,
+      consorcio_id,
+      unidad_id,
       estado,
       prioridad,
       tipo,
-      search = '',
-      sortBy = 'fecha_creacion',
-      sortOrder = 'desc',
+      asignado_rol,
+      proveedor_id,
+      search,
+      page = 1,
+      limit = 50,
     } = req.query;
 
     const where = {};
 
-    if (consorcioId) where.consorcio_id = consorcioId;
+    if (consorcio_id) where.consorcio_id = consorcio_id;
+    if (unidad_id) where.unidad_id = unidad_id;
     if (estado) where.estado = estado;
     if (prioridad) where.prioridad = prioridad;
     if (tipo) where.tipo = tipo;
-    if (search) where.descripcion = { [Op.like]: `%${search}%` };
+    if (asignado_rol) where.asignado_rol = asignado_rol;
+    if (proveedor_id) where.proveedor_id = proveedor_id;
 
-    const { rows, count } = await Ticket.findAndCountAll({
+    if (search) {
+      where[Op.or] = [
+        { titulo: { [Op.like]: `%${search}%` } },
+        { descripcion: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const { rows: tickets, count } = await Ticket.findAndCountAll({
       where,
       include: TICKET_DEFAULT_INCLUDES,
-      order: [[sortBy, sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC']],
-      limit: parseInt(limit, 10),
-      offset: (parseInt(page, 10) - 1) * parseInt(limit, 10),
-      distinct: true,
+      limit: parseInt(limit),
+      offset,
+      order: [['fecha_creacion', 'DESC']],
     });
 
-    const mapped = rows.map(t => ({
-      id: t.id,
-      titulo: t.descripcion?.substring(0, 40) || `Ticket #${t.id}`,
-      descripcion: t.descripcion,
-      prioridad: t.prioridad,
-      estado: t.estado,
-      tipo: t.tipo,
-      fechaCreacion: t.fecha_creacion,
-      fechaActualizacion: t.fecha_cierre,
-      consorcioId: t.consorcio_id,
-      consorcioNombre: t.consorcio?.nombre ?? 'N/D',
-      unidadId: t.unidad_id,
-      unidadNombre: t.unidad?.codigo ?? 'N/D',
-      creadoPorId: t.creado_por,
-      creadoPorNombre: t.creador?.username ?? 'Desconocido',
-      asignadoANombre: t.asignado?.username ?? null,
-      comentarios: [],
-      historial: [],
-      adjuntos: [],
-      notificaciones: {
-        notifyCreator: false,
-        notifyProvider: false,
-        notifyPropietario: false,
-        notifyInquilino: false,
-        notifyEncargado: false,
-      },
-    }));
+const mapped = tickets.map((t) => ({
+  id: t.id,
+  consorcioId: t.consorcio_id,
+  consorcioNombre: t.consorcio?.nombre ?? 'N/D',
+  unidadId: t.unidad_id,
+  unidadNombre: t.unidad ? `${t.unidad.piso}-${t.unidad.codigo}` : 'N/D', // ← Concatenar piso + codigo
+  creadoPorId: t.creado_por,
+  creadoPorNombre: t.creador?.username ?? 'Desconocido',
+  creadorRol: t.creador_rol || 'admin_global',
+  asignadoAId: t.asignado_a,
+  asignadoANombre: t.asignado?.username ?? null,
+  asignadoRol: t.asignado_rol,
+  proveedorId: t.proveedor_id,
+  proveedorNombre: t.proveedor_nombre,
+  proveedorRubro: t.proveedor_rubro,
+  tipo: t.tipo,
+  titulo: t.titulo,
+  descripcion: t.descripcion,
+  prioridad: t.prioridad,
+  estado: t.estado,
+  fechaCreacion: t.fecha_creacion,
+  fechaActualizacion: t.updatedAt,
+  fechaResolucion: t.fecha_resolucion,
+  fechaCierre: t.fecha_cierre,
+  estimacionCosto: t.estimacion_costo,
+  costoFinal: t.costo_final,
+  updatedAt: t.updatedAt,
+}));
 
     res.json({ data: mapped, total: count });
   } catch (error) {
@@ -115,7 +127,84 @@ export const getTickets = async (req, res) => {
   }
 };
 
+// ====================================
+// UPDATE TICKET COMPLETO
+// ====================================
+export const updateTicket = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
 
+    const ticket = await Ticket.findByPk(id);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket no encontrado' });
+    }
+
+    const cambios = [];
+    
+    if (updates.tipo && updates.tipo !== ticket.tipo) {
+      ensureInList(updates.tipo, TIPOS_TICKET, 'tipo');
+      cambios.push(`Tipo: ${ticket.tipo} → ${updates.tipo}`);
+      ticket.tipo = updates.tipo;
+    }
+
+    if (updates.prioridad && updates.prioridad !== ticket.prioridad) {
+      ensureInList(updates.prioridad, PRIORIDADES_TICKET, 'prioridad');
+      cambios.push(`Prioridad: ${ticket.prioridad} → ${updates.prioridad}`);
+      ticket.prioridad = updates.prioridad;
+    }
+
+    if (updates.titulo) ticket.titulo = updates.titulo;
+    if (updates.descripcion) ticket.descripcion = updates.descripcion;
+
+    await ticket.save();
+
+    if (cambios.length > 0) {
+      await TicketHistorial.create({
+        ticket_id: id,
+        usuario_id: req.user?.id || 1,
+        tipo: 'actualizacion',
+        autor: req.user?.username || 'Sistema',
+        mensaje: cambios.join(', '),
+        fecha: new Date(),
+      });
+    }
+
+    await ticket.reload({ include: TICKET_DEFAULT_INCLUDES });
+    res.json(ticket);
+  } catch (error) {
+    console.error('Error al actualizar ticket:', error);
+    res.status(error.status || 500).json({ error: error.message });
+  }
+};
+
+// ====================================
+// GET COMENTARIOS
+// ====================================
+export const getComentarios = async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+
+    const comentarios = await TicketComentario.findAll({
+      where: { ticket_id: ticketId },
+      include: [{
+        model: Usuario,
+        as: 'usuario',
+        attributes: ['id', 'username', 'email']
+      }],
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.json(comentarios);
+  } catch (error) {
+    console.error('Error al obtener comentarios:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ====================================
+// GET TICKET BY ID
+// ====================================
 export const getTicketById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -131,10 +220,13 @@ export const getTicketById = async (req, res) => {
     res.json(ticket);
   } catch (error) {
     console.error('Error al obtener ticket por ID:', error);
-    res.status(error.status || 500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
+// ====================================
+// CREATE TICKET
+// ====================================
 export const createTicket = async (req, res) => {
   try {
     const {
@@ -143,6 +235,7 @@ export const createTicket = async (req, res) => {
       creado_por,
       asignado_a = null,
       tipo = 'otro',
+      titulo,
       descripcion,
       prioridad = 'media',
     } = req.body;
@@ -156,37 +249,26 @@ export const createTicket = async (req, res) => {
     ensureInList(tipo, TIPOS_TICKET, 'tipo');
     ensureInList(prioridad, PRIORIDADES_TICKET, 'prioridad');
 
-    const [consorcio, creador, unidad, asignado] = await Promise.all([
-      Consorcio.findByPk(consorcio_id),
-      Usuario.findByPk(creado_por),
-      unidad_id ? Unidad.findByPk(unidad_id) : Promise.resolve(null),
-      asignado_a ? Usuario.findByPk(asignado_a) : Promise.resolve(null),
-    ]);
-
-    if (!consorcio) {
-      return res.status(404).json({ message: 'Consorcio no encontrado' });
-    }
-
-    if (!creador) {
-      return res.status(404).json({ message: 'Usuario creador no encontrado' });
-    }
-
-    if (unidad_id && !unidad) {
-      return res.status(404).json({ message: 'Unidad funcional no encontrada' });
-    }
-
-    if (asignado_a && !asignado) {
-      return res.status(404).json({ message: 'Usuario asignado no encontrado' });
-    }
-
     const ticket = await Ticket.create({
       consorcio_id,
-      unidad_id: unidad ? unidad.id : null,
+      unidad_id: unidad_id || null,
       creado_por,
-      asignado_a: asignado ? asignado.id : null,
+      asignado_a: asignado_a || null,
       tipo,
+      titulo: titulo || `Ticket ${tipo}`,
       descripcion,
       prioridad,
+      estado: 'abierto',
+    });
+
+    // Registrar en historial
+    await TicketHistorial.create({
+      ticket_id: ticket.id,
+      usuario_id: creado_por,
+      tipo: 'creado',
+      autor: 'Sistema',
+      mensaje: 'Ticket creado',
+      fecha: new Date(),
     });
 
     await ticket.reload({ include: TICKET_DEFAULT_INCLUDES });
@@ -198,91 +280,9 @@ export const createTicket = async (req, res) => {
   }
 };
 
-export const updateTicket = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      consorcio_id,
-      unidad_id,
-      asignado_a,
-      tipo,
-      descripcion,
-      prioridad,
-      estado,
-    } = req.body;
-
-    const ticket = await Ticket.findByPk(id);
-
-    if (!ticket) {
-      return res.status(404).json({ message: 'Ticket no encontrado' });
-    }
-
-    if (consorcio_id) {
-      const consorcio = await Consorcio.findByPk(consorcio_id);
-      if (!consorcio) {
-        return res.status(404).json({ message: 'Consorcio no encontrado' });
-      }
-      ticket.consorcio_id = consorcio.id;
-    }
-
-    if (unidad_id !== undefined) {
-      if (unidad_id === null) {
-        ticket.unidad_id = null;
-      } else {
-        const unidad = await Unidad.findByPk(unidad_id);
-        if (!unidad) {
-          return res.status(404).json({ message: 'Unidad funcional no encontrada' });
-        }
-        ticket.unidad_id = unidad.id;
-      }
-    }
-
-    if (asignado_a !== undefined) {
-      if (asignado_a === null) {
-        ticket.asignado_a = null;
-      } else {
-        const usuarioAsignado = await Usuario.findByPk(asignado_a);
-        if (!usuarioAsignado) {
-          return res.status(404).json({ message: 'Usuario asignado no encontrado' });
-        }
-        ticket.asignado_a = usuarioAsignado.id;
-      }
-    }
-
-    if (tipo) {
-      ensureInList(tipo, TIPOS_TICKET, 'tipo');
-      ticket.tipo = tipo;
-    }
-
-    if (descripcion !== undefined) {
-      ticket.descripcion = descripcion;
-    }
-
-    if (prioridad) {
-      ensureInList(prioridad, PRIORIDADES_TICKET, 'prioridad');
-      ticket.prioridad = prioridad;
-    }
-
-    if (estado) {
-      ensureInList(estado, ESTADOS_TICKET, 'estado');
-      ticket.estado = estado;
-      if (['resuelto', 'cerrado'].includes(estado)) {
-        ticket.fecha_cierre = ticket.fecha_cierre ?? new Date();
-      } else {
-        ticket.fecha_cierre = null;
-      }
-    }
-
-    await ticket.save();
-    await ticket.reload({ include: TICKET_DEFAULT_INCLUDES });
-
-    res.json(ticket);
-  } catch (error) {
-    console.error('Error al actualizar ticket:', error);
-    res.status(error.status || 500).json({ error: error.message });
-  }
-};
-
+// ====================================
+// UPDATE TICKET ESTADO
+// ====================================
 export const updateTicketEstado = async (req, res) => {
   try {
     const { id } = req.params;
@@ -300,17 +300,223 @@ export const updateTicketEstado = async (req, res) => {
       return res.status(404).json({ message: 'Ticket no encontrado' });
     }
 
+    const estadoAnterior = ticket.estado;
     ticket.estado = estado;
-    ticket.fecha_cierre = ['resuelto', 'cerrado'].includes(estado)
-      ? new Date()
-      : null;
+
+    if (['resuelto', 'cerrado'].includes(estado)) {
+      ticket.fecha_cierre = ticket.fecha_cierre || new Date();
+    }
+
+    if (estado === 'resuelto' && !ticket.fecha_resolucion) {
+      ticket.fecha_resolucion = new Date();
+    }
 
     await ticket.save();
+
+    // Registrar cambio en historial
+    await TicketHistorial.create({
+      ticket_id: ticket.id,
+      usuario_id: req.user?.id || 1,
+      tipo: 'estado',
+      autor: req.user?.username || 'Sistema',
+      mensaje: `Estado cambiado de "${estadoAnterior}" a "${estado}"`,
+      fecha: new Date(),
+    });
+
     await ticket.reload({ include: TICKET_DEFAULT_INCLUDES });
 
     res.json(ticket);
   } catch (error) {
     console.error('Error al actualizar estado del ticket:', error);
-    res.status(error.status || 500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ====================================
+// UPDATE TICKET ASIGNACION
+// ====================================
+export const updateTicketAsignacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { asignadoANombre, asignadoRol, proveedorId } = req.body;
+
+    const ticket = await Ticket.findByPk(id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket no encontrado' });
+    }
+
+    ticket.asignado_rol = asignadoRol || null;
+    ticket.proveedor_id = proveedorId || null;
+    ticket.proveedor_nombre = asignadoANombre || null;
+
+    await ticket.save();
+
+    // Registrar en historial
+    await TicketHistorial.create({
+      ticket_id: ticket.id,
+      usuario_id: req.user?.id || 1,
+      tipo: 'asignado',
+      autor: req.user?.username || 'Sistema',
+      mensaje: `Ticket asignado a ${asignadoANombre} (${asignadoRol})`,
+      fecha: new Date(),
+    });
+
+    await ticket.reload({ include: TICKET_DEFAULT_INCLUDES });
+
+    res.json(ticket);
+  } catch (error) {
+    console.error('Error al actualizar asignación:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ====================================
+// ADD COMENTARIO
+// ====================================
+export const addComentario = async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const { authorId, message, isInternal } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ message: 'El mensaje es obligatorio' });
+    }
+
+    const ticket = await Ticket.findByPk(ticketId);
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket no encontrado' });
+    }
+
+    const usuario = await Usuario.findByPk(authorId);
+
+    const comentario = await TicketComentario.create({
+      ticket_id: ticketId,
+      usuario_id: authorId,
+      mensaje: message,
+      interno: isInternal || false,
+    });
+
+    // Registrar en historial
+    await TicketHistorial.create({
+      ticket_id: ticketId,
+      usuario_id: authorId,
+      tipo: 'comentario',
+      autor: usuario?.username || 'Usuario',
+      mensaje: message,
+      fecha: new Date(),
+    });
+
+    res.status(201).json(comentario);
+  } catch (error) {
+    console.error('Error al agregar comentario:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ====================================
+// UPDATE COSTOS
+// ====================================
+export const updateTicketCostos = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estimacionCosto, costoFinal } = req.body;
+
+    const ticket = await Ticket.findByPk(id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket no encontrado' });
+    }
+
+    if (estimacionCosto !== undefined) {
+      ticket.estimacion_costo = estimacionCosto;
+    }
+
+    if (costoFinal !== undefined) {
+      ticket.costo_final = costoFinal;
+    }
+
+    await ticket.save();
+
+    // Registrar en historial
+    await TicketHistorial.create({
+      ticket_id: ticket.id,
+      usuario_id: req.user?.id || 1,
+      tipo: 'costos',
+      autor: req.user?.username || 'Sistema',
+      mensaje: `Costos actualizados: Estimado ${estimacionCosto || 'N/A'}, Final ${costoFinal || 'N/A'}`,
+      fecha: new Date(),
+    });
+
+    await ticket.reload({ include: TICKET_DEFAULT_INCLUDES });
+
+    res.json(ticket);
+  } catch (error) {
+    console.error('Error al actualizar costos:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ====================================
+// UPLOAD ADJUNTO
+// ====================================
+export const uploadAdjunto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: 'No se recibió ningún archivo' });
+    }
+
+    const ticket = await Ticket.findByPk(id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket no encontrado' });
+    }
+
+    const adjunto = await TicketAdjunto.create({
+      ticket_id: id,
+      nombre_archivo: file.originalname,
+      tipo_archivo: file.mimetype,
+      tamano: file.size,
+      ruta: file.path,
+      subido_por: req.user?.id || 1,
+    });
+
+    // Registrar en historial
+    await TicketHistorial.create({
+      ticket_id: id,
+      usuario_id: req.user?.id || 1,
+      tipo: 'adjunto',
+      autor: req.user?.username || 'Usuario',
+      mensaje: `Archivo adjuntado: ${file.originalname}`,
+      fecha: new Date(),
+    });
+
+    res.status(201).json(adjunto);
+  } catch (error) {
+    console.error('Error al subir adjunto:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ====================================
+// GET HISTORIAL
+// ====================================
+export const getTicketHistorial = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const historial = await TicketHistorial.findAll({
+      where: { ticket_id: id },
+      order: [['fecha', 'DESC']],
+    });
+
+    res.json(historial);
+  } catch (error) {
+    console.error('Error al obtener historial:', error);
+    res.status(500).json({ error: error.message });
   }
 };
