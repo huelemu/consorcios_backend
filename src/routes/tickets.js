@@ -43,7 +43,7 @@ router.get('/:id', getTicketById);
 router.post('/', createTicket);
 router.put('/:id', updateTicket);
 router.patch('/:id/estado', updateTicketEstado);
-router.patch('/:id/asignacion', updateTicketAsignacion);
+router.patch('/:ticketId/asignacion', updateTicketAsignacion);
 router.patch('/:id/costos', updateTicketCostos);
 
 // ====================================

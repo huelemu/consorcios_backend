@@ -1,0 +1,152 @@
+{
+  "info": {
+    "_postman_id": "c6b5b6df-49d4-4a3c-9811-74c012345678",
+    "name": "Consorcios - Tickets API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Colección de endpoints para gestionar tickets en el backend de Consorcios."
+  },
+  "item": [
+    {
+      "name": "Listar tickets",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets?limit=10&page=1",
+          "host": ["{{baseUrl}}"],
+          "path": ["tickets"],
+          "query": [
+            { "key": "limit", "value": "10" },
+            { "key": "page", "value": "1" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Obtener metadata de tickets",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/meta",
+          "host": ["{{baseUrl}}"],
+          "path": ["tickets", "meta"]
+        }
+      }
+    },
+    {
+      "name": "Obtener ticket por ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["tickets", "{{ticketId}}"]
+        }
+      }
+    },
+    {
+      "name": "Crear ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"consorcio_id\": 1,\n  \"unidad_id\": 10,\n  \"creado_por\": 5,\n  \"asignado_a\": null,\n  \"tipo\": \"mantenimiento\",\n  \"descripcion\": \"Detalle del problema o solicitud\",\n  \"prioridad\": \"media\",\n  \"estado\": \"nuevo\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/tickets",
+          "host": ["{{baseUrl}}"],
+          "path": ["tickets"]
+        }
+      }
+    },
+    {
+      "name": "Actualizar ticket",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"consorcio_id\": 1,\n  \"unidad_id\": 10,\n  \"creado_por\": 5,\n  \"asignado_a\": 6,\n  \"tipo\": \"mantenimiento\",\n  \"descripcion\": \"Detalle actualizado del ticket\",\n  \"prioridad\": \"alta\",\n  \"estado\": \"en_progreso\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["tickets", "{{ticketId}}"]
+        }
+      }
+    },
+    {
+      "name": "Cambiar estado del ticket",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"cerrado\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketId}}/estado",
+          "host": ["{{baseUrl}}"],
+          "path": ["tickets", "{{ticketId}}", "estado"]
+        }
+      }
+    }
+  ],
+  "event": [],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7000/api"
+    },
+    {
+      "key": "ticketId",
+      "value": "1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ]
+}
