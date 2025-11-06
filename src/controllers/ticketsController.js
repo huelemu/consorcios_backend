@@ -3,6 +3,8 @@ import {
   Consorcio,
   Unidad,
   Usuario,
+  Proveedor,
+  Persona,
   TicketComentario,
   TicketHistorial,
   TicketAdjunto
@@ -23,7 +25,7 @@ const TICKET_DEFAULT_INCLUDES = [
   {
     model: Unidad,
     as: 'unidad',
-    attributes: ['id', 'codigo', 'piso'], // ← SIN 'unidad'
+    attributes: ['id', 'codigo', 'piso'],
     required: false,
   },
   {
@@ -38,6 +40,33 @@ const TICKET_DEFAULT_INCLUDES = [
     attributes: ['id', 'username', 'email'],
     required: false,
   },
+  {
+    model: Proveedor,
+    as: 'proveedor',
+    attributes: ['id', 'razon_social', 'rubro'],
+    include: [{
+      model: Persona,
+      as: 'persona',
+      attributes: ['nombre', 'apellido', 'email', 'telefono']
+    }],
+    required: false,
+  },
+  {
+    model: TicketComentario,
+    as: 'comentarios',
+    include: [{ model: Usuario, as: 'usuario', attributes: ['username'] }],
+    required: false,
+  },
+  {
+    model: TicketHistorial,
+    as: 'historial',
+    required: false,
+  },
+  {
+    model: TicketAdjunto,
+    as: 'adjuntos',
+    required: false,
+  }
 ];
 
 const ensureInList = (value, list, field) => {
@@ -96,7 +125,7 @@ const mapped = tickets.map((t) => ({
   consorcioId: t.consorcio_id,
   consorcioNombre: t.consorcio?.nombre ?? 'N/D',
   unidadId: t.unidad_id,
-  unidadNombre: t.unidad ? `${t.unidad.piso}-${t.unidad.codigo}` : 'N/D', // ← Concatenar piso + codigo
+  unidadNombre: t.unidad ? `${t.unidad.piso}-${t.unidad.codigo}` : null,
   creadoPorId: t.creado_por,
   creadoPorNombre: t.creador?.username ?? 'Desconocido',
   creadorRol: t.creador_rol || 'admin_global',
@@ -104,8 +133,8 @@ const mapped = tickets.map((t) => ({
   asignadoANombre: t.asignado?.username ?? null,
   asignadoRol: t.asignado_rol,
   proveedorId: t.proveedor_id,
-  proveedorNombre: t.proveedor_nombre,
-  proveedorRubro: t.proveedor_rubro,
+  proveedorNombre: t.proveedor?.razon_social ?? t.proveedor_nombre,
+  proveedorRubro: t.proveedor?.rubro ?? t.proveedor_rubro,
   tipo: t.tipo,
   titulo: t.titulo,
   descripcion: t.descripcion,
@@ -117,7 +146,32 @@ const mapped = tickets.map((t) => ({
   fechaCierre: t.fecha_cierre,
   estimacionCosto: t.estimacion_costo,
   costoFinal: t.costo_final,
-  updatedAt: t.updatedAt,
+  comentarios: t.comentarios?.map(c => ({
+    id: c.id,
+    ticketId: c.ticket_id,
+    authorId: c.usuario_id,
+    authorName: c.usuario?.username ?? 'Desconocido',
+    message: c.mensaje,
+    isInternal: c.interno,
+    createdAt: c.createdAt
+  })) ?? [],
+  historial: t.historial?.map(h => ({
+    id: h.id,
+    date: h.fecha,
+    userId: h.usuario_id,
+    userName: h.autor,
+    action: h.tipo,
+    description: h.mensaje
+  })) ?? [],
+  adjuntos: t.adjuntos?.map(a => ({
+    id: a.id,
+    fileName: a.nombre_archivo,
+    fileType: a.tipo_archivo,
+    uploadedAt: a.createdAt,
+    uploadedBy: a.subido_por,
+    url: a.ruta
+  })) ?? [],
+  updatedAt: t.updatedAt
 }));
 
     res.json({ data: mapped, total: count });
@@ -379,17 +433,24 @@ export const addComentario = async (req, res) => {
     const { ticketId } = req.params;
     const { authorId, message, isInternal } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ message: 'El mensaje es obligatorio' });
+    // Validar que authorId exista y sea válido
+    if (!authorId || authorId === 0) {
+      return res.status(400).json({ 
+        message: 'El ID del autor es obligatorio y debe ser válido' 
+      });
     }
 
+    // Verificar que el ticket existe
     const ticket = await Ticket.findByPk(ticketId);
-
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket no encontrado' });
     }
 
+    // Verificar que el usuario existe
     const usuario = await Usuario.findByPk(authorId);
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
 
     const comentario = await TicketComentario.create({
       ticket_id: ticketId,
@@ -403,9 +464,13 @@ export const addComentario = async (req, res) => {
       ticket_id: ticketId,
       usuario_id: authorId,
       tipo: 'comentario',
-      autor: usuario?.username || 'Usuario',
-      mensaje: message,
+      autor: usuario.username,
+      mensaje: `Comentario agregado: ${message.substring(0, 50)}...`,
       fecha: new Date(),
+    });
+
+    await comentario.reload({
+      include: [{ model: Usuario, as: 'usuario', attributes: ['username'] }]
     });
 
     res.status(201).json(comentario);
@@ -414,6 +479,8 @@ export const addComentario = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
 
 // ====================================
 // UPDATE COSTOS
@@ -458,65 +525,38 @@ export const updateTicketCostos = async (req, res) => {
   }
 };
 
-// ====================================
-// UPLOAD ADJUNTO
-// ====================================
-export const uploadAdjunto = async (req, res) => {
+export const getTicketHistorial = async (req, res) => {
   try {
-    const { id } = req.params;
-    const file = req.file;
-
-    if (!file) {
-      return res.status(400).json({ message: 'No se recibió ningún archivo' });
-    }
-
-    const ticket = await Ticket.findByPk(id);
-
-    if (!ticket) {
-      return res.status(404).json({ message: 'Ticket no encontrado' });
-    }
-
-    const adjunto = await TicketAdjunto.create({
-      ticket_id: id,
-      nombre_archivo: file.originalname,
-      tipo_archivo: file.mimetype,
-      tamano: file.size,
-      ruta: file.path,
-      subido_por: req.user?.id || 1,
+    const { ticketId } = req.params;
+    const historial = await TicketHistorial.findAll({
+      where: { ticket_id: ticketId },
+      order: [['fecha', 'DESC']]
     });
-
-    // Registrar en historial
-    await TicketHistorial.create({
-      ticket_id: id,
-      usuario_id: req.user?.id || 1,
-      tipo: 'adjunto',
-      autor: req.user?.username || 'Usuario',
-      mensaje: `Archivo adjuntado: ${file.originalname}`,
-      fecha: new Date(),
-    });
-
-    res.status(201).json(adjunto);
+    res.json(historial);
   } catch (error) {
-    console.error('Error al subir adjunto:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// ====================================
-// GET HISTORIAL
-// ====================================
-export const getTicketHistorial = async (req, res) => {
+export const getAdjuntos = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const historial = await TicketHistorial.findAll({
-      where: { ticket_id: id },
-      order: [['fecha', 'DESC']],
+    const { ticketId } = req.params;
+    const adjuntos = await TicketAdjunto.findAll({
+      where: { ticket_id: ticketId },
+      order: [['createdAt', 'DESC']]
     });
-
-    res.json(historial);
+    res.json(adjuntos);
   } catch (error) {
-    console.error('Error al obtener historial:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const uploadAdjunto = async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    // TODO: integrar multer para manejo de archivos
+    res.status(501).json({ message: 'Pendiente implementación multer' });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };

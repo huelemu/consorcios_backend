@@ -40,9 +40,12 @@ Ticket.belongsTo(Consorcio, { foreignKey: 'consorcio_id', as: 'consorcio' });
 // ✅ Usuario ↔ Ticket (1:N) creados y asignados
 Usuario.hasMany(Ticket, { foreignKey: 'creado_por', as: 'tickets_creados' });
 Ticket.belongsTo(Usuario, { foreignKey: 'creado_por', as: 'creador' });
-
 Usuario.hasMany(Ticket, { foreignKey: 'asignado_a', as: 'tickets_asignados' });
 Ticket.belongsTo(Usuario, { foreignKey: 'asignado_a', as: 'asignado' });
+
+// ✅ Ticket ↔ Proveedor (N:1)
+Ticket.belongsTo(Proveedor, { foreignKey: 'proveedor_id', as: 'proveedor' });
+Proveedor.hasMany(Ticket, { foreignKey: 'proveedor_id', as: 'tickets' });
 
 // ================================
 // 🆕 RELACIONES TICKET COMENTARIOS
