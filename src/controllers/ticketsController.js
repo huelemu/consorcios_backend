@@ -215,7 +215,7 @@ export const updateTicket = async (req, res) => {
 export const updateTicketEstado = async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado } = req.body;
+    const { estado, userId } = req.body;
 
     if (!estado) return res.status(400).json({ message: 'El estado es obligatorio' });
 
@@ -237,9 +237,12 @@ export const updateTicketEstado = async (req, res) => {
 
     await ticket.save();
 
+    // Usar userId del body o fallback a null
+    const finalUserId = userId || req.user?.id || null;
+
     await TicketHistorial.create({
       ticket_id: ticket.id,
-      usuario_id: req.user?.id || 1,
+      usuario_id: finalUserId,
       tipo: 'estado',
       autor: req.user?.username || 'Sistema',
       mensaje: `Estado cambiado de "${estadoAnterior}" a "${estado}"`,
@@ -254,38 +257,32 @@ export const updateTicketEstado = async (req, res) => {
   }
 };
 
+
 export const updateTicketAsignacion = async (req, res) => {
   try {
-    const { ticketId } = req.params;
-    const { userId } = req.body;
-    console.log('📎 Upload request:', { ticketId, userId });
+    const { id } = req.params;
+    const { asignadoANombre, asignadoRol, proveedorId } = req.body;
 
-    // Buscar ticket y usuario
-    const ticket = await Ticket.findByPk(ticketId);
-    const usuario = userId ? await Usuario.findByPk(userId) : null; // ✅ definir usuario siempre
+    const ticket = await Ticket.findByPk(id);
+    if (!ticket) return res.status(404).json({ message: 'Ticket no encontrado' });
 
-    if (!ticket) {
-      return res.status(404).json({ message: 'Ticket no encontrado' });
-    }
+    ticket.asignado_rol = asignadoRol || null;
+    ticket.proveedor_id = proveedorId || null;
+    ticket.proveedor_nombre = asignadoANombre || null;
 
-    // Actualizar asignación
-    ticket.asignado_id = usuario ? usuario.id : null;
     await ticket.save();
 
-    // Crear historial
     await TicketHistorial.create({
       ticket_id: ticket.id,
-      usuario_id: usuario ? usuario.id : null,
+      usuario_id: req.user?.id || 1,
       tipo: 'asignado',
-      autor: 'Sistema',
-      mensaje: usuario
-        ? `Ticket asignado a ${usuario.nombre} (${usuario.email})`
-        : 'Ticket sin asignación (pendiente)',
+      autor: req.user?.username || 'Sistema',
+      mensaje: `Ticket asignado a ${asignadoANombre || 'N/A'} (${asignadoRol || 'N/A'})`,
       fecha: new Date(),
     });
 
-    console.log('✅ Asignación actualizada correctamente');
-    res.json({ success: true });
+    await ticket.reload({ include: TICKET_DEFAULT_INCLUDES });
+    res.json(ticket);
   } catch (error) {
     console.error('Error al actualizar asignación:', error);
     res.status(500).json({ error: error.message });
