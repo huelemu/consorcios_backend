@@ -1,67 +1,58 @@
 import { Router } from 'express';
+import { Unidad } from '../models/index.js'; // ⭐ AGREGAR ESTA LÍNEA
 import {
   getUnidades,
   getUnidadById,
-  createUnidad,      // ✅ corregido
+  createUnidad,
   updateUnidad,
   deleteUnidad
 } from '../controllers/unidadesController.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
 router.get('/', getUnidades);
 router.get('/:id', getUnidadById);
-router.post('/', createUnidad);      // ✅ corregido
+router.post('/', createUnidad);
 router.put('/:id', updateUnidad);
 router.delete('/:id', deleteUnidad);
 
-/**
- * @swagger
- * tags:
- *   name: Unidades
- *   description: Gestión de unidades funcionales
- */
+router.post('/bulk-create', authenticateToken, async (req, res) => {
+  const { consorcio_id, cantidad, prefijo, tipo, estado } = req.body;
 
-/**
- * @swagger
- * /unidades:
- *   get:
- *     summary: Listar todas las unidades
- *     tags: [Unidades]
- *   post:
- *     summary: Crear una unidad
- *     tags: [Unidades]
- *
- * /unidades/{id}:
- *   get:
- *     summary: Obtener una unidad por ID
- *     tags: [Unidades]
- *   put:
- *     summary: Actualizar unidad
- *     tags: [Unidades]
- *   delete:
- *     summary: Eliminar unidad
- *     tags: [Unidades]
- */
+  if (!consorcio_id || !cantidad) {
+    return res.status(400).json({ message: 'consorcio_id y cantidad requeridos' });
+  }
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Unidad:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         consorcio_id:
- *           type: integer
- *         nombre:
- *           type: string
- *         piso:
- *           type: string
- *         superficie:
- *           type: number
- */
+  try {
+    const unidades = [];
+    for (let i = 1; i <= cantidad; i++) {
+      unidades.push({
+        consorcio_id,
+        codigo: `${prefijo}-${i.toString().padStart(3, '0')}`,
+        piso: '0',
+        superficie: 0,
+        porcentaje_participacion: 0,
+        estado: estado || 'vacante' // ⭐ CAMBIAR aquí
+      });
+    }
 
+    await Unidad.bulkCreate(unidades);
+    res.json({ success: true, creadas: cantidad });
+  } catch (error) {
+    console.error('Error bulk create:', error);
+    res.status(500).json({ message: 'Error creando unidades', error: error.message });
+  }
+});
 
+router.get('/consorcio/:consorcioId', async (req, res) => {
+  try {
+    const unidades = await Unidad.findAll({
+      where: { consorcio_id: req.params.consorcioId }
+    });
+    res.json(unidades);
+  } catch (error) {
+    res.status(500).json({ message: 'Error', error: error.message });
+  }
+});
 export default router;
