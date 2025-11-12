@@ -9,6 +9,8 @@ import { ConsorcioProveedor } from './consorciosProveedor.js';
 import { TicketComentario } from './ticketComentario.js';
 import { TicketHistorial } from './ticketHistorial.js';
 import { TicketAdjunto } from './ticketAdjunto.js';
+import { ProveedorPersona } from './proveedorPersona.js';
+import { ProveedorCuentaBancaria } from './proveedorCuentaBancaria.js';
 
 // ================================
 // ASOCIACIONES ENTRE MODELOS
@@ -71,6 +73,34 @@ TicketAdjunto.belongsTo(Usuario, { foreignKey: 'subido_por', as: 'usuario' });
 // ✅ Proveedor ↔ Persona (1:1)
 Proveedor.belongsTo(Persona, { foreignKey: 'persona_id', as: 'persona' });
 
+// Proveedor ↔ ProveedorPersona (1:N)
+Proveedor.hasMany(ProveedorPersona, {
+  foreignKey: 'proveedor_id',
+  as: 'personas'
+});
+ProveedorPersona.belongsTo(Proveedor, {
+  foreignKey: 'proveedor_id',
+  as: 'proveedor'
+});
+
+// ProveedorPersona ↔ Persona (N:1)
+ProveedorPersona.belongsTo(Persona, {
+  foreignKey: 'persona_id',
+  as: 'persona'
+});
+
+// Proveedor ↔ ProveedorCuentaBancaria (1:N)
+Proveedor.hasMany(ProveedorCuentaBancaria, {
+  foreignKey: 'proveedor_id',
+  as: 'cuentas_bancarias'
+});
+ProveedorCuentaBancaria.belongsTo(Proveedor, {
+  foreignKey: 'proveedor_id',
+  as: 'proveedor'
+});
+
+
+
 // ✅ ConsorcioProveedor ↔ Consorcio y Proveedor
 ConsorcioProveedor.belongsTo(Consorcio, { foreignKey: 'consorcio_id', as: 'consorcio' });
 ConsorcioProveedor.belongsTo(Proveedor, { foreignKey: 'proveedor_id', as: 'proveedor' });
@@ -80,6 +110,8 @@ Proveedor.hasMany(ConsorcioProveedor, { foreignKey: 'proveedor_id', as: 'consorc
 
 // ✅ Consorcio ↔ ConsorcioProveedor (1:N)
 Consorcio.hasMany(ConsorcioProveedor, { foreignKey: 'consorcio_id', as: 'proveedores_rel' });
+
+
 
 // ================================
 // EXPORTS
@@ -95,5 +127,7 @@ export {
   ConsorcioProveedor,
   TicketComentario,
   TicketHistorial,
-  TicketAdjunto
+  TicketAdjunto,
+  ProveedorPersona,
+  ProveedorCuentaBancaria
 };
