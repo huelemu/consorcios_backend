@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { setupSwagger } from './config/swagger.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 // ⚠️ IMPORTANTE: Importar TODO el models/index.js ANTES de las rutas
 import { 
@@ -79,6 +80,7 @@ app.use('/unidades', unidadesRoutes);
 app.use('/tickets', ticketsRoutes);
 app.use('/proveedores', proveedoresRoutes);
 app.use('/expensas', expensasRoutes);
+app.use('/dashboard', dashboardRoutes);
 
 app.use(errorHandler);
 

@@ -123,24 +123,41 @@ export const getTicketById = async (req, res) => {
 export const createTicket = async (req, res) => {
   try {
     const {
+      consorcio_id,
       consorcioId,
+      unidad_id,
       unidadId,
+      creado_por,
       creadoPor,
       creadorRol,
+      creador_rol,
       tipo,
       titulo,
       descripcion,
       prioridad = 'media'
     } = req.body;
 
+    // Soportar tanto snake_case como camelCase
+    const finalConsorcioId = consorcio_id || consorcioId;
+    const finalUnidadId = unidad_id || unidadId || null;
+    const finalCreadoPor = creado_por || creadoPor;
+    const finalCreadorRol = creador_rol || creadorRol || 'propietario';
+
+    if (!finalConsorcioId) {
+      return res.status(400).json({ message: 'consorcio_id es obligatorio' });
+    }
+    if (!finalCreadoPor) {
+      return res.status(400).json({ message: 'creado_por es obligatorio' });
+    }
+
     ensureInList(tipo, TIPOS_TICKET, 'tipo');
     ensureInList(prioridad, PRIORIDADES_TICKET, 'prioridad');
 
     const ticket = await Ticket.create({
-      consorcio_id: consorcioId,
-      unidad_id: unidadId || null,
-      creado_por: creadoPor,
-      creador_rol: creadorRol || 'propietario',
+      consorcio_id: finalConsorcioId,
+      unidad_id: finalUnidadId,
+      creado_por: finalCreadoPor,
+      creador_rol: finalCreadorRol,
       tipo,
       titulo,
       descripcion,
@@ -151,7 +168,7 @@ export const createTicket = async (req, res) => {
 
     await TicketHistorial.create({
       ticket_id: ticket.id,
-      usuario_id: creadoPor,
+      usuario_id: finalCreadoPor,
       tipo: 'creado',
       autor: req.user?.username || 'Sistema',
       mensaje: `Ticket creado: ${titulo}`,
@@ -397,7 +414,7 @@ export const uploadAdjunto = async (req, res) => {
   try {
     const { ticketId } = req.params;
     
-    console.log('📎 Upload request:');
+    console.log('🔎 Upload request:');
     console.log('   ticketId:', ticketId);
     console.log('   req.body:', req.body);
     console.log('   req.body.userId:', req.body.userId);
