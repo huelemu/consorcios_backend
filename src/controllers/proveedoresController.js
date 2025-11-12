@@ -1,6 +1,8 @@
 import { Proveedor, Persona, ConsorcioProveedor, Consorcio } from '../models/index.js';
 import { ProveedorPersona, ProveedorCuentaBancaria } from '../models/index.js';
 import { sequelize } from '../models/index.js';
+import { validarCBU, validarCUIT } from '../utils/validators.js';
+import { Op } from 'sequelize';
 
 
 // ========================================
@@ -144,6 +146,20 @@ export const agregarCuentaBancaria = async (req, res) => {
     const { id } = req.params;
     const data = { ...req.body, proveedor_id: id };
 
+    // ✅ VALIDACIÓN DE CBU
+    if (data.cbu && !validarCBU(data.cbu)) {
+      return res.status(400).json({
+        message: 'El CBU debe tener exactamente 22 dígitos'
+      });
+    }
+
+    // ✅ VALIDACIÓN DE CUIT
+    if (data.cuit_titular && !validarCUIT(data.cuit_titular)) {
+      return res.status(400).json({
+        message: 'El CUIT debe tener el formato correcto (XX-XXXXXXXX-X o 11 dígitos)'
+      });
+    }
+
     // Si se marca como predeterminada, desmarcar las demás
     if (data.predeterminada) {
       await ProveedorCuentaBancaria.update(
@@ -168,6 +184,20 @@ export const updateCuentaBancaria = async (req, res) => {
 
     if (!cuenta) {
       return res.status(404).json({ message: 'Cuenta no encontrada' });
+    }
+
+    // ✅ VALIDACIÓN DE CBU (si se está actualizando)
+    if (req.body.cbu && !validarCBU(req.body.cbu)) {
+      return res.status(400).json({
+        message: 'El CBU debe tener exactamente 22 dígitos'
+      });
+    }
+
+    // ✅ VALIDACIÓN DE CUIT (si se está actualizando)
+    if (req.body.cuit_titular && !validarCUIT(req.body.cuit_titular)) {
+      return res.status(400).json({
+        message: 'El CUIT debe tener el formato correcto (XX-XXXXXXXX-X o 11 dígitos)'
+      });
     }
 
     // Si se marca como predeterminada, desmarcar las demás
