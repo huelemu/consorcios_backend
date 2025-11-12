@@ -306,7 +306,7 @@ export const getUnidadesStats = async (req, res) => {
     const totalUnidades = await Unidad.count();
 
     // Unidades por estado
-    const ocupadas = await Unidad.count({ where: { estado: 'ocupada' } });
+    const ocupadas = await Unidad.count({ where: { estado: 'ocupado' } });
     const vacantes = await Unidad.count({ where: { estado: 'vacante' } });
     const mantenimiento = await Unidad.count({ where: { estado: 'mantenimiento' } });
 
