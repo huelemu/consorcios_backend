@@ -1,4 +1,4 @@
-import { sequelize } from '../config/db.js'; 
+import { sequelize } from '../config/db.js';
 import { Consorcio } from './consorcio.js';
 import { Unidad } from './unidad.js';
 import { Persona } from './persona.js';
@@ -11,6 +11,8 @@ import { TicketHistorial } from './ticketHistorial.js';
 import { TicketAdjunto } from './ticketAdjunto.js';
 import { ProveedorPersona } from './proveedorPersona.js';
 import { ProveedorCuentaBancaria } from './proveedorCuentaBancaria.js';
+import { Rol } from './rol.js';
+import { UsuarioRol } from './usuarioRol.js';
 
 // ================================
 // ASOCIACIONES ENTRE MODELOS
@@ -111,7 +113,31 @@ Proveedor.hasMany(ConsorcioProveedor, { foreignKey: 'proveedor_id', as: 'consorc
 // ✅ Consorcio ↔ ConsorcioProveedor (1:N)
 Consorcio.hasMany(ConsorcioProveedor, { foreignKey: 'consorcio_id', as: 'proveedores_rel' });
 
+// ================================
+// 🆕 RELACIONES USUARIO ↔ ROL (N:M)
+// ================================
+Usuario.belongsToMany(Rol, {
+  through: UsuarioRol,
+  foreignKey: 'usuario_id',
+  otherKey: 'rol_id',
+  as: 'roles'
+});
 
+Rol.belongsToMany(Usuario, {
+  through: UsuarioRol,
+  foreignKey: 'rol_id',
+  otherKey: 'usuario_id',
+  as: 'usuarios'
+});
+
+// Relaciones directas con UsuarioRol
+UsuarioRol.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuario' });
+UsuarioRol.belongsTo(Rol, { foreignKey: 'rol_id', as: 'rol' });
+UsuarioRol.belongsTo(Consorcio, { foreignKey: 'consorcio_id', as: 'consorcio' });
+UsuarioRol.belongsTo(Unidad, { foreignKey: 'unidad_id', as: 'unidad' });
+
+Usuario.hasMany(UsuarioRol, { foreignKey: 'usuario_id', as: 'usuario_roles' });
+Rol.hasMany(UsuarioRol, { foreignKey: 'rol_id', as: 'rol_usuarios' });
 
 // ================================
 // EXPORTS
@@ -129,5 +155,7 @@ export {
   TicketHistorial,
   TicketAdjunto,
   ProveedorPersona,
-  ProveedorCuentaBancaria
+  ProveedorCuentaBancaria,
+  Rol,
+  UsuarioRol
 };

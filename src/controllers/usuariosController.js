@@ -1,5 +1,9 @@
 import {Usuario} from '../models/usuario.js';
 import {Persona} from '../models/persona.js';
+import {Rol} from '../models/rol.js';
+import {UsuarioRol} from '../models/usuarioRol.js';
+import {Consorcio} from '../models/consorcio.js';
+import {Unidad} from '../models/unidad.js';
 import { Op } from 'sequelize';
 
 /**
@@ -346,6 +350,226 @@ export const getPersonasSinUsuario = async (req, res) => {
     console.error('Error al obtener personas disponibles:', error);
     res.status(500).json({
       message: 'Error al obtener personas disponibles',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * =========================================
+ * GET /usuarios/:id/roles
+ * =========================================
+ * Obtener todos los roles asignados a un usuario
+ */
+export const getUsuarioRoles = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que el usuario exista
+    const usuario = await Usuario.findByPk(id);
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Obtener roles asignados con detalles
+    const rolesAsignados = await UsuarioRol.findAll({
+      where: { usuario_id: id },
+      include: [
+        {
+          model: Rol,
+          as: 'rol',
+          attributes: ['id', 'nombre', 'descripcion']
+        },
+        {
+          model: Consorcio,
+          as: 'consorcio',
+          attributes: ['id', 'nombre'],
+          required: false
+        },
+        {
+          model: Unidad,
+          as: 'unidad',
+          attributes: ['id', 'codigo'],
+          required: false
+        }
+      ],
+      order: [['id', 'ASC']]
+    });
+
+    res.json({
+      usuario_id: parseInt(id),
+      rol_global: usuario.rol_global,
+      roles: rolesAsignados
+    });
+  } catch (error) {
+    console.error('Error al obtener roles del usuario:', error);
+    res.status(500).json({
+      message: 'Error al obtener roles del usuario',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * =========================================
+ * POST /usuarios/roles/asignar
+ * =========================================
+ * Asignar un rol a un usuario
+ */
+export const asignarRol = async (req, res) => {
+  try {
+    const {
+      usuario_id,
+      rol_id,
+      consorcio_id = null,
+      unidad_id = null,
+      activo = true
+    } = req.body;
+
+    // Validaciones
+    if (!usuario_id || !rol_id) {
+      return res.status(400).json({
+        message: 'usuario_id y rol_id son requeridos'
+      });
+    }
+
+    // Verificar que el usuario exista
+    const usuario = await Usuario.findByPk(usuario_id);
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Verificar que el rol exista
+    const rol = await Rol.findByPk(rol_id);
+    if (!rol) {
+      return res.status(404).json({ message: 'Rol no encontrado' });
+    }
+
+    // Verificar si el consorcio existe (si se proporciona)
+    if (consorcio_id) {
+      const consorcio = await Consorcio.findByPk(consorcio_id);
+      if (!consorcio) {
+        return res.status(404).json({ message: 'Consorcio no encontrado' });
+      }
+    }
+
+    // Verificar si la unidad existe (si se proporciona)
+    if (unidad_id) {
+      const unidad = await Unidad.findByPk(unidad_id);
+      if (!unidad) {
+        return res.status(404).json({ message: 'Unidad no encontrada' });
+      }
+    }
+
+    // Verificar si ya existe la asignación
+    const asignacionExistente = await UsuarioRol.findOne({
+      where: {
+        usuario_id,
+        rol_id,
+        consorcio_id: consorcio_id || null,
+        unidad_id: unidad_id || null
+      }
+    });
+
+    if (asignacionExistente) {
+      return res.status(400).json({
+        message: 'El rol ya está asignado al usuario en este contexto'
+      });
+    }
+
+    // Crear la asignación
+    const nuevaAsignacion = await UsuarioRol.create({
+      usuario_id,
+      rol_id,
+      consorcio_id,
+      unidad_id,
+      activo
+    });
+
+    // Cargar las relaciones
+    await nuevaAsignacion.reload({
+      include: [
+        {
+          model: Rol,
+          as: 'rol',
+          attributes: ['id', 'nombre', 'descripcion']
+        },
+        {
+          model: Consorcio,
+          as: 'consorcio',
+          attributes: ['id', 'nombre'],
+          required: false
+        },
+        {
+          model: Unidad,
+          as: 'unidad',
+          attributes: ['id', 'codigo'],
+          required: false
+        }
+      ]
+    });
+
+    res.status(201).json({
+      message: 'Rol asignado exitosamente',
+      asignacion: nuevaAsignacion
+    });
+  } catch (error) {
+    console.error('Error al asignar rol:', error);
+    res.status(500).json({
+      message: 'Error al asignar rol',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * =========================================
+ * DELETE /usuarios/roles/:id
+ * =========================================
+ * Eliminar una asignación de rol
+ */
+export const eliminarAsignacionRol = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const asignacion = await UsuarioRol.findByPk(id);
+    if (!asignacion) {
+      return res.status(404).json({
+        message: 'Asignación de rol no encontrada'
+      });
+    }
+
+    await asignacion.destroy();
+
+    res.json({
+      message: 'Asignación de rol eliminada exitosamente'
+    });
+  } catch (error) {
+    console.error('Error al eliminar asignación de rol:', error);
+    res.status(500).json({
+      message: 'Error al eliminar asignación de rol',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * =========================================
+ * GET /roles
+ * =========================================
+ * Listar todos los roles disponibles
+ */
+export const getRoles = async (req, res) => {
+  try {
+    const roles = await Rol.findAll({
+      order: [['nombre', 'ASC']]
+    });
+
+    res.json(roles);
+  } catch (error) {
+    console.error('Error al obtener roles:', error);
+    res.status(500).json({
+      message: 'Error al obtener roles',
       error: error.message
     });
   }
