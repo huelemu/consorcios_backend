@@ -40,11 +40,42 @@ export const getUnidades = async (req, res) => {
       where.estado = estado;
     }
 
+    // Si se filtra por tickets pendientes, obtener IDs ANTES de paginar
+    if (tiene_tickets_pendientes === 'true') {
+      const unidadesConTickets = await Ticket.findAll({
+        attributes: ['unidad_id'],
+        where: {
+          estado: ['abierto', 'en_proceso'],
+          unidad_id: { [Op.ne]: null }
+        },
+        group: ['unidad_id'],
+        raw: true
+      });
+
+      const unidadesIdsConTickets = unidadesConTickets.map(u => u.unidad_id);
+
+      // Si no hay unidades con tickets, retornar vacío
+      if (unidadesIdsConTickets.length === 0) {
+        return res.json({
+          data: [],
+          pagination: {
+            total: 0,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: 0
+          }
+        });
+      }
+
+      // Agregar filtro por IDs de unidades con tickets
+      where.id = { [Op.in]: unidadesIdsConTickets };
+    }
+
     // Paginación
     const offset = (page - 1) * limit;
 
     // Consulta base
-    let queryOptions = {
+    const queryOptions = {
       where,
       include: [
         {
@@ -67,61 +98,27 @@ export const getUnidades = async (req, res) => {
       distinct: true
     };
 
-    // Ejecutar consulta
+    // Ejecutar consulta con filtros aplicados
     const { count, rows } = await Unidad.findAndCountAll(queryOptions);
 
-    // Si se filtra por tickets pendientes, contar tickets por unidad
-    if (tiene_tickets_pendientes === 'true') {
-      // Obtener IDs de unidades con tickets pendientes
-      const unidadesConTickets = await Ticket.findAll({
+    // Para todas las unidades retornadas, contar tickets pendientes
+    const unidadIds = rows.map(u => u.id);
+
+    let ticketsCounts = [];
+    if (unidadIds.length > 0) {
+      ticketsCounts = await Ticket.findAll({
         attributes: [
           'unidad_id',
           [sequelize.fn('COUNT', sequelize.col('id')), 'tickets_count']
         ],
         where: {
           estado: ['abierto', 'en_proceso'],
-          unidad_id: { [Op.ne]: null }
+          unidad_id: { [Op.in]: unidadIds }
         },
         group: ['unidad_id'],
         raw: true
       });
-
-      const unidadesIdsConTickets = unidadesConTickets.map(u => u.unidad_id);
-
-      // Filtrar solo unidades con tickets
-      const unidadesFiltradas = rows.filter(u => unidadesIdsConTickets.includes(u.id));
-
-      // Agregar contador de tickets
-      unidadesFiltradas.forEach(unidad => {
-        const ticketData = unidadesConTickets.find(t => t.unidad_id === unidad.id);
-        unidad.dataValues.tickets_count = ticketData ? parseInt(ticketData.tickets_count) : 0;
-      });
-
-      return res.json({
-        data: unidadesFiltradas,
-        pagination: {
-          total: unidadesFiltradas.length,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(unidadesFiltradas.length / limit)
-        }
-      });
     }
-
-    // Para todas las unidades, contar tickets pendientes
-    const unidadIds = rows.map(u => u.id);
-    const ticketsCounts = await Ticket.findAll({
-      attributes: [
-        'unidad_id',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'tickets_count']
-      ],
-      where: {
-        estado: ['abierto', 'en_proceso'],
-        unidad_id: { [Op.in]: unidadIds }
-      },
-      group: ['unidad_id'],
-      raw: true
-    });
 
     // Agregar contador de tickets a cada unidad
     rows.forEach(unidad => {
@@ -295,6 +292,45 @@ export const deleteUnidad = async (req, res) => {
     res.json({ message: 'Unidad eliminada correctamente' });
   } catch (error) {
     console.error('Error en deleteUnidad:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * GET /api/unidades/stats
+ * Obtiene estadísticas generales de unidades
+ */
+export const getUnidadesStats = async (req, res) => {
+  try {
+    // Total de unidades
+    const totalUnidades = await Unidad.count();
+
+    // Unidades por estado
+    const ocupadas = await Unidad.count({ where: { estado: 'ocupada' } });
+    const vacantes = await Unidad.count({ where: { estado: 'vacante' } });
+    const mantenimiento = await Unidad.count({ where: { estado: 'mantenimiento' } });
+
+    // Unidades con tickets pendientes
+    const unidadesConTickets = await sequelize.query(`
+      SELECT COUNT(DISTINCT unidad_id) as count
+      FROM tickets
+      WHERE estado IN ('abierto', 'en_proceso')
+      AND unidad_id IS NOT NULL
+    `, {
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    const conTickets = unidadesConTickets[0]?.count || 0;
+
+    res.json({
+      total: totalUnidades,
+      ocupadas,
+      vacantes,
+      mantenimiento,
+      conTickets: parseInt(conTickets)
+    });
+  } catch (error) {
+    console.error('Error en getUnidadesStats:', error);
     res.status(500).json({ error: error.message });
   }
 };
