@@ -8,13 +8,22 @@ import {
   activarUsuario,
   desactivarUsuario,
   resetearPassword,
-  getPersonasSinUsuario
+  getPersonasSinUsuario,
+  getUsuarioRoles,
+  asignarRol,
+  eliminarAsignacionRol,
+  getRoles
 } from '../controllers/usuariosController.js';
 
 const router = express.Router();
 
 // ⚠️ IMPORTANTE: Rutas especiales ANTES de /:id
 router.get('/personas-disponibles', getPersonasSinUsuario);
+
+// Rutas de roles
+router.get('/roles/list', getRoles); // GET /usuarios/roles/list
+router.post('/roles/asignar', asignarRol); // POST /usuarios/roles/asignar
+router.delete('/roles/:id', eliminarAsignacionRol); // DELETE /usuarios/roles/:id
 
 // CRUD básico
 router.get('/', getUsuarios);
@@ -27,6 +36,7 @@ router.delete('/:id', deleteUsuario);
 router.patch('/:id/activar', activarUsuario);
 router.patch('/:id/desactivar', desactivarUsuario);
 router.post('/:id/reset-password', resetearPassword);
+router.get('/:id/roles', getUsuarioRoles); // GET /usuarios/:id/roles
 
 /**
  * @swagger
