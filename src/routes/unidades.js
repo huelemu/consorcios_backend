@@ -5,12 +5,17 @@ import {
   getUnidadById,
   createUnidad,
   updateUnidad,
-  deleteUnidad
+  deleteUnidad,
+  getUnidadesStats
 } from '../controllers/unidadesController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
+// Rutas específicas primero (antes de /:id)
+router.get('/stats', getUnidadesStats);
+
+// Rutas generales
 router.get('/', getUnidades);
 router.get('/:id', getUnidadById);
 router.post('/', createUnidad);
