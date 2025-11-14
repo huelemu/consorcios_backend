@@ -574,3 +574,163 @@ export const getRoles = async (req, res) => {
     });
   }
 };
+
+/**
+ * =========================================
+ * GET /usuarios/pendientes
+ * =========================================
+ * Obtener usuarios pendientes de aprobación
+ */
+export const getUsuariosPendientes = async (req, res) => {
+  try {
+    const usuariosPendientes = await Usuario.findAll({
+      where: {
+        aprobado: false
+      },
+      include: [{
+        model: Persona,
+        as: 'persona',
+        attributes: ['id', 'nombre', 'apellido', 'documento', 'email', 'telefono', 'tipo_persona']
+      }],
+      order: [['fecha_creacion', 'DESC']],
+      attributes: { exclude: ['password'] }
+    });
+
+    res.json({
+      success: true,
+      usuarios: usuariosPendientes,
+      total: usuariosPendientes.length
+    });
+  } catch (error) {
+    console.error('Error al obtener usuarios pendientes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener usuarios pendientes',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * =========================================
+ * PATCH /usuarios/:id/aprobar
+ * =========================================
+ * Aprobar un usuario pendiente
+ */
+export const aprobarUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const usuario = await Usuario.findByPk(id, {
+      include: [{
+        model: Persona,
+        as: 'persona',
+        attributes: ['id', 'nombre', 'apellido', 'email']
+      }]
+    });
+
+    if (!usuario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    if (usuario.aprobado) {
+      return res.status(400).json({
+        success: false,
+        message: 'El usuario ya está aprobado'
+      });
+    }
+
+    // Aprobar y activar el usuario
+    usuario.aprobado = true;
+    usuario.activo = true;
+    await usuario.save();
+
+    // Enviar email de aprobación (opcional)
+    try {
+      const { enviarEmailAprobacion } = await import('../services/emailService.js');
+      await enviarEmailAprobacion(
+        usuario.email,
+        usuario.persona.nombre
+      );
+    } catch (emailError) {
+      console.warn('⚠️ No se pudo enviar email de aprobación:', emailError.message);
+      // Continuar aunque falle el email
+    }
+
+    await usuario.reload({
+      include: [{ model: Persona, as: 'persona' }]
+    });
+
+    res.json({
+      success: true,
+      message: 'Usuario aprobado exitosamente',
+      usuario
+    });
+  } catch (error) {
+    console.error('Error al aprobar usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al aprobar usuario',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * =========================================
+ * PATCH /usuarios/:id/rechazar
+ * =========================================
+ * Rechazar un usuario pendiente
+ */
+export const rechazarUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { motivo } = req.body;
+
+    const usuario = await Usuario.findByPk(id, {
+      include: [{
+        model: Persona,
+        as: 'persona',
+        attributes: ['id', 'nombre', 'apellido', 'email']
+      }]
+    });
+
+    if (!usuario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Enviar email de rechazo (opcional)
+    try {
+      const { enviarEmailRechazo } = await import('../services/emailService.js');
+      await enviarEmailRechazo(
+        usuario.email,
+        usuario.persona.nombre,
+        motivo
+      );
+    } catch (emailError) {
+      console.warn('⚠️ No se pudo enviar email de rechazo:', emailError.message);
+      // Continuar aunque falle el email
+    }
+
+    // Eliminar el usuario rechazado
+    await usuario.destroy();
+
+    res.json({
+      success: true,
+      message: 'Usuario rechazado y eliminado exitosamente'
+    });
+  } catch (error) {
+    console.error('Error al rechazar usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al rechazar usuario',
+      error: error.message
+    });
+  }
+};

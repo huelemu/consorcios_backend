@@ -47,7 +47,11 @@ export const Usuario = sequelize.define('Usuario', {
     type: DataTypes.BOOLEAN,
     defaultValue: false // Inactivo hasta que se active
   },
-  
+  aprobado: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false // Requiere aprobación del administrador
+  },
+
   // ======== CAMPOS OAUTH (agregados por ALTER TABLE) ========
   google_id: {
     type: DataTypes.STRING(255),
