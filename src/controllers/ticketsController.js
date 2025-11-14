@@ -150,6 +150,35 @@ export const createTicket = async (req, res) => {
       return res.status(400).json({ message: 'creado_por es obligatorio' });
     }
 
+    // ✅ Verificar que el usuario existe antes de crear el ticket
+    const usuario = await Usuario.findByPk(finalCreadoPor);
+    if (!usuario) {
+      return res.status(404).json({
+        message: `Usuario con id ${finalCreadoPor} no encontrado`,
+        error: 'El usuario especificado en creado_por no existe en la base de datos'
+      });
+    }
+
+    // ✅ Verificar que el consorcio existe
+    const consorcio = await Consorcio.findByPk(finalConsorcioId);
+    if (!consorcio) {
+      return res.status(404).json({
+        message: `Consorcio con id ${finalConsorcioId} no encontrado`,
+        error: 'El consorcio especificado no existe en la base de datos'
+      });
+    }
+
+    // ✅ Verificar que la unidad existe (si se proporciona)
+    if (finalUnidadId) {
+      const unidad = await Unidad.findByPk(finalUnidadId);
+      if (!unidad) {
+        return res.status(404).json({
+          message: `Unidad con id ${finalUnidadId} no encontrada`,
+          error: 'La unidad especificada no existe en la base de datos'
+        });
+      }
+    }
+
     ensureInList(tipo, TIPOS_TICKET, 'tipo');
     ensureInList(prioridad, PRIORIDADES_TICKET, 'prioridad');
 
@@ -170,7 +199,7 @@ export const createTicket = async (req, res) => {
       ticket_id: ticket.id,
       usuario_id: finalCreadoPor,
       tipo: 'creado',
-      autor: req.user?.username || 'Sistema',
+      autor: usuario.username || 'Sistema',
       mensaje: `Ticket creado: ${titulo}`,
       fecha: new Date()
     });
