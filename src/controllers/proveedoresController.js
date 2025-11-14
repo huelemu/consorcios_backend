@@ -344,18 +344,22 @@ export const createProveedor = async (req, res) => {
 
     const proveedor = await Proveedor.create(data);
 
-    // Devolver el proveedor creado con sus relaciones
+    // Devolver el proveedor creado con sus relaciones (opcionales)
     const proveedorCompleto = await Proveedor.findByPk(proveedor.id, {
       include: [
-        { model: Persona, as: 'persona' },
-        { model: ProveedorPersona, as: 'personas' },
-        { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias' }
+        { model: Persona, as: 'persona', required: false },
+        { model: ProveedorPersona, as: 'personas', required: false },
+        { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias', required: false }
       ]
     });
 
     res.status(201).json(proveedorCompleto);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error creating proveedor:', error);
+    res.status(500).json({
+      error: error.message,
+      details: error.stack
+    });
   }
 };
 
