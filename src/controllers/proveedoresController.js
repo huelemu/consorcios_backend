@@ -344,18 +344,27 @@ export const createProveedor = async (req, res) => {
 
     const proveedor = await Proveedor.create(data);
 
-    // Devolver el proveedor creado con sus relaciones
-    const proveedorCompleto = await Proveedor.findByPk(proveedor.id, {
-      include: [
-        { model: Persona, as: 'persona' },
-        { model: ProveedorPersona, as: 'personas' },
-        { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias' }
-      ]
-    });
-
-    res.status(201).json(proveedorCompleto);
+    // Intentar obtener con relaciones, pero si falla, devolver el proveedor básico
+    try {
+      const proveedorCompleto = await Proveedor.findByPk(proveedor.id, {
+        include: [
+          { model: Persona, as: 'persona', required: false },
+          { model: ProveedorPersona, as: 'personas', required: false },
+          { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias', required: false }
+        ]
+      });
+      res.status(201).json(proveedorCompleto);
+    } catch (includeError) {
+      // Si falla el include (por tablas inexistentes), devolver el proveedor sin relaciones
+      console.warn('No se pudieron cargar las relaciones:', includeError.message);
+      res.status(201).json(proveedor);
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error creating proveedor:', error);
+    res.status(500).json({
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -377,17 +386,23 @@ export const updateProveedor = async (req, res) => {
 
     await proveedor.update(req.body);
 
-    // Devolver el proveedor actualizado con sus relaciones
-    const proveedorCompleto = await Proveedor.findByPk(id, {
-      include: [
-        { model: Persona, as: 'persona' },
-        { model: ProveedorPersona, as: 'personas' },
-        { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias' }
-      ]
-    });
-
-    res.json(proveedorCompleto);
+    // Intentar obtener con relaciones, pero si falla, devolver el proveedor básico
+    try {
+      const proveedorCompleto = await Proveedor.findByPk(id, {
+        include: [
+          { model: Persona, as: 'persona', required: false },
+          { model: ProveedorPersona, as: 'personas', required: false },
+          { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias', required: false }
+        ]
+      });
+      res.json(proveedorCompleto);
+    } catch (includeError) {
+      // Si falla el include, devolver el proveedor sin relaciones
+      console.warn('No se pudieron cargar las relaciones:', includeError.message);
+      res.json(proveedor);
+    }
   } catch (error) {
+    console.error('Error updating proveedor:', error);
     res.status(500).json({ error: error.message });
   }
 };
