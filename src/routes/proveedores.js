@@ -2,6 +2,9 @@ import express from 'express';
 import {
   getProveedores,
   getProveedorById,
+  createProveedor,
+  updateProveedor,
+  deleteProveedor,
   getProveedoresStats,
   // Personas
   getPersonasVinculadas,
@@ -20,10 +23,13 @@ import {
 
 const router = express.Router();
 
-// Rutas básicas
+// Rutas básicas CRUD
 router.get('/', getProveedores);
+router.post('/', createProveedor);
 router.get('/stats', getProveedoresStats);
 router.get('/:id', getProveedorById);
+router.put('/:id', updateProveedor);
+router.delete('/:id', deleteProveedor);
 
 // Rutas de personas vinculadas
 router.get('/:id/personas', getPersonasVinculadas);
