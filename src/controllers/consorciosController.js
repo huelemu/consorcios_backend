@@ -22,7 +22,8 @@ export const getConsorcios = async (req, res) => {
       provincia = '',
       responsable_id = '',
       codigo_ext = '',
-      con_tickets_pendientes = '',
+      tiene_tickets_pendientes = '',
+      con_tickets_pendientes = '', // Mantener compatibilidad con nombre anterior
       sortBy = 'nombre',
       sortOrder = 'asc'
     } = req.query;
@@ -59,8 +60,10 @@ export const getConsorcios = async (req, res) => {
     }
 
     // Filtro especial: solo consorcios con tickets pendientes
+    // Soporta tanto 'tiene_tickets_pendientes' (frontend) como 'con_tickets_pendientes' (legacy)
+    const filtroTicketsPendientes = tiene_tickets_pendientes || con_tickets_pendientes;
     let includeTicketsFilter = null;
-    if (con_tickets_pendientes === 'true' || con_tickets_pendientes === '1') {
+    if (filtroTicketsPendientes === 'true' || filtroTicketsPendientes === '1') {
       includeTicketsFilter = {
         model: Ticket,
         as: 'tickets',
