@@ -330,3 +330,96 @@ export const getProveedorById = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const createProveedor = async (req, res) => {
+  try {
+    const data = req.body;
+
+    // ✅ VALIDACIÓN DE CUIT (si viene)
+    if (data.cuit && !validarCUIT(data.cuit)) {
+      return res.status(400).json({
+        message: 'El CUIT debe tener el formato correcto (XX-XXXXXXXX-X o 11 dígitos)'
+      });
+    }
+
+    const proveedor = await Proveedor.create(data);
+
+    // Devolver el proveedor creado con sus relaciones
+    const proveedorCompleto = await Proveedor.findByPk(proveedor.id, {
+      include: [
+        { model: Persona, as: 'persona' },
+        { model: ProveedorPersona, as: 'personas' },
+        { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias' }
+      ]
+    });
+
+    res.status(201).json(proveedorCompleto);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateProveedor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const proveedor = await Proveedor.findByPk(id);
+
+    if (!proveedor) {
+      return res.status(404).json({ message: 'Proveedor no encontrado' });
+    }
+
+    // ✅ VALIDACIÓN DE CUIT (si se está actualizando)
+    if (req.body.cuit && !validarCUIT(req.body.cuit)) {
+      return res.status(400).json({
+        message: 'El CUIT debe tener el formato correcto (XX-XXXXXXXX-X o 11 dígitos)'
+      });
+    }
+
+    await proveedor.update(req.body);
+
+    // Devolver el proveedor actualizado con sus relaciones
+    const proveedorCompleto = await Proveedor.findByPk(id, {
+      include: [
+        { model: Persona, as: 'persona' },
+        { model: ProveedorPersona, as: 'personas' },
+        { model: ProveedorCuentaBancaria, as: 'cuentas_bancarias' }
+      ]
+    });
+
+    res.json(proveedorCompleto);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteProveedor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const proveedor = await Proveedor.findByPk(id);
+
+    if (!proveedor) {
+      return res.status(404).json({ message: 'Proveedor no encontrado' });
+    }
+
+    // Verificar si tiene relaciones activas
+    const tienePersonas = await ProveedorPersona.count({ where: { proveedor_id: id } });
+    const tieneCuentas = await ProveedorCuentaBancaria.count({ where: { proveedor_id: id } });
+    const tieneConsorcios = await ConsorcioProveedor.count({ where: { proveedor_id: id } });
+
+    if (tienePersonas > 0 || tieneCuentas > 0 || tieneConsorcios > 0) {
+      return res.status(400).json({
+        message: 'No se puede eliminar el proveedor porque tiene relaciones activas',
+        detalles: {
+          personas: tienePersonas,
+          cuentas: tieneCuentas,
+          consorcios: tieneConsorcios
+        }
+      });
+    }
+
+    await proveedor.destroy();
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
