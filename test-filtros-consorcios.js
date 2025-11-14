@@ -34,10 +34,10 @@ async function testFiltros() {
     }
     console.log('');
 
-    // TEST 3: Filtro por consorcios con tickets pendientes
-    console.log('TEST 3: Filtro de consorcios con tickets pendientes');
-    console.log('GET /api/consorcios?con_tickets_pendientes=true');
-    const response3 = await fetch(`${BASE_URL}?con_tickets_pendientes=true`);
+    // TEST 3: Filtro por consorcios con tickets pendientes (usando nombre del frontend)
+    console.log('TEST 3: Filtro de consorcios con tickets pendientes (tiene_tickets_pendientes)');
+    console.log('GET /api/consorcios?tiene_tickets_pendientes=true');
+    const response3 = await fetch(`${BASE_URL}?tiene_tickets_pendientes=true`);
     const data3 = await response3.json();
     console.log(`✓ Consorcios con tickets pendientes: ${data3.data.length}`);
     if (data3.data.length > 0) {
@@ -59,9 +59,9 @@ async function testFiltros() {
     console.log('');
 
     // TEST 5: Combinar filtros
-    console.log('TEST 5: Combinar filtros (estado + con_tickets_pendientes)');
-    console.log('GET /api/consorcios?estado=activo&con_tickets_pendientes=true');
-    const response5 = await fetch(`${BASE_URL}?estado=activo&con_tickets_pendientes=true`);
+    console.log('TEST 5: Combinar filtros (estado + tiene_tickets_pendientes)');
+    console.log('GET /api/consorcios?estado=activo&tiene_tickets_pendientes=true');
+    const response5 = await fetch(`${BASE_URL}?estado=activo&tiene_tickets_pendientes=true`);
     const data5 = await response5.json();
     console.log(`✓ Consorcios activos con tickets pendientes: ${data5.data.length}`);
     console.log('');
