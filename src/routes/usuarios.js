@@ -12,13 +12,19 @@ import {
   getUsuarioRoles,
   asignarRol,
   eliminarAsignacionRol,
-  getRoles
+  getRoles,
+  getUsuariosPendientes,
+  aprobarUsuario,
+  rechazarUsuario
 } from '../controllers/usuariosController.js';
 
 const router = express.Router();
 
 // ⚠️ IMPORTANTE: Rutas especiales ANTES de /:id
 router.get('/personas-disponibles', getPersonasSinUsuario);
+
+// Rutas de gestión de aprobaciones
+router.get('/pendientes', getUsuariosPendientes); // GET /usuarios/pendientes
 
 // Rutas de roles
 router.get('/roles/list', getRoles); // GET /usuarios/roles/list
@@ -35,6 +41,8 @@ router.delete('/:id', deleteUsuario);
 // Acciones especiales
 router.patch('/:id/activar', activarUsuario);
 router.patch('/:id/desactivar', desactivarUsuario);
+router.patch('/:id/aprobar', aprobarUsuario); // PATCH /usuarios/:id/aprobar
+router.patch('/:id/rechazar', rechazarUsuario); // PATCH /usuarios/:id/rechazar
 router.post('/:id/reset-password', resetearPassword);
 router.get('/:id/roles', getUsuarioRoles); // GET /usuarios/:id/roles
 

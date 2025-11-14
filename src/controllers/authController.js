@@ -110,7 +110,8 @@ export const register = async (req, res) => {
       password: hashedPassword,
       rol_global: 'inquilino', // Rol por defecto
       oauth_provider: 'local',
-      activo: true, // Activar inmediatamente (puedes cambiar esto si necesitas verificación de email)
+      activo: false, // Inactivo hasta que el admin lo active
+      aprobado: false, // Requiere aprobación del administrador
       email_verificado: false,
       primer_login: true
     }, { transaction });
@@ -133,7 +134,7 @@ export const register = async (req, res) => {
     // Responder con el token y datos del usuario
     res.status(201).json({
       success: true,
-      message: 'Usuario registrado exitosamente',
+      message: 'Usuario registrado exitosamente. Tu cuenta está pendiente de aprobación.',
       token,
       user: {
         id: nuevoUsuario.id,
@@ -143,6 +144,8 @@ export const register = async (req, res) => {
         nombre: nuevaPersona.nombre,
         apellido: nuevaPersona.apellido,
         rol: nuevoUsuario.rol_global,
+        activo: nuevoUsuario.activo,
+        aprobado: nuevoUsuario.aprobado,
         primer_login: nuevoUsuario.primer_login
       }
     });
@@ -200,11 +203,19 @@ export const login = async (req, res) => {
       });
     }
 
+    // Verificar que el usuario esté aprobado
+    if (!usuario.aprobado) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tu cuenta está pendiente de aprobación por el administrador.'
+      });
+    }
+
     // Verificar que el usuario esté activo
     if (!usuario.activo) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Tu cuenta está inactiva. Contacta al administrador.' 
+      return res.status(403).json({
+        success: false,
+        message: 'Tu cuenta está inactiva. Contacta al administrador.'
       });
     }
 
@@ -244,6 +255,8 @@ export const login = async (req, res) => {
         nombre: usuario.persona.nombre,
         apellido: usuario.persona.apellido,
         rol: usuario.rol_global,
+        activo: usuario.activo,
+        aprobado: usuario.aprobado,
         primer_login: usuario.primer_login
       }
     });
@@ -333,7 +346,8 @@ export const googleLogin = async (req, res) => {
         google_id: googleUser.sub,
         oauth_provider: 'google',
         rol_global: 'inquilino',
-        activo: true,
+        activo: false, // Inactivo hasta que el admin lo active
+        aprobado: false, // Requiere aprobación del administrador
         email_verificado: true, // Google ya verificó el email
         primer_login: true
       }, { transaction });
@@ -380,6 +394,8 @@ export const googleLogin = async (req, res) => {
         apellido: persona.apellido,
         picture: googleUser.picture, // Avatar de Google
         rol: usuario.rol_global,
+        activo: usuario.activo,
+        aprobado: usuario.aprobado,
         primer_login: usuario.primer_login,
         isNewUser
       }
@@ -435,6 +451,7 @@ export const profile = async (req, res) => {
         oauth_provider: usuario.oauth_provider,
         email_verificado: usuario.email_verificado,
         activo: usuario.activo,
+        aprobado: usuario.aprobado,
         fecha_creacion: usuario.fecha_creacion
       }
     });
