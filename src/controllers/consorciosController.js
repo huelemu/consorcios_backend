@@ -1,4 +1,4 @@
-import { Consorcio, Usuario, Unidad, Persona } from '../models/index.js';
+import { Consorcio, Usuario, Unidad, Persona, Ticket } from '../models/index.js';
 import { Op } from 'sequelize';
 import {sequelize} from '../config/db.js';
 import xlsx from 'xlsx';
@@ -21,13 +21,15 @@ export const getConsorcios = async (req, res) => {
       ciudad = '',
       provincia = '',
       responsable_id = '',
+      codigo_ext = '',
+      con_tickets_pendientes = '',
       sortBy = 'nombre',
       sortOrder = 'asc'
     } = req.query;
 
     // Construir filtros dinámicos
     const whereClause = {};
-    
+
     if (search) {
       whereClause[Op.or] = [
         { nombre: { [Op.like]: `%${search}%` } },
@@ -52,36 +54,63 @@ export const getConsorcios = async (req, res) => {
       whereClause.responsable_id = responsable_id;
     }
 
+    if (codigo_ext) {
+      whereClause.codigo_ext = { [Op.like]: `%${codigo_ext}%` };
+    }
+
+    // Filtro especial: solo consorcios con tickets pendientes
+    let includeTicketsFilter = null;
+    if (con_tickets_pendientes === 'true' || con_tickets_pendientes === '1') {
+      includeTicketsFilter = {
+        model: Ticket,
+        as: 'tickets',
+        where: {
+          estado: { [Op.in]: ['abierto', 'en_proceso', 'pendiente'] }
+        },
+        attributes: [],
+        required: true // INNER JOIN - solo consorcios con tickets pendientes
+      };
+    }
+
     // Calcular offset para paginación
     const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Construir includes dinámicamente
+    const includes = [
+      {
+        model: Usuario,
+        as: 'responsable',
+        attributes: ['id', 'username', 'email', 'rol_global'],
+        include: [
+          {
+            model: Persona,
+            as: 'persona',
+            attributes: ['nombre', 'apellido', 'documento', 'telefono']
+          }
+        ]
+      },
+      {
+        model: Unidad,
+        as: 'unidades',
+        attributes: ['id', 'codigo', 'estado'],
+        separate: true // Para evitar duplicados en el count
+      }
+    ];
+
+    // Agregar filtro de tickets pendientes si se solicitó
+    if (includeTicketsFilter) {
+      includes.push(includeTicketsFilter);
+    }
 
     // Obtener consorcios con paginación
     const { count, rows: consorcios } = await Consorcio.findAndCountAll({
       where: whereClause,
-      include: [
-        {
-          model: Usuario,
-          as: 'responsable',
-          attributes: ['id', 'username', 'email', 'rol_global'],
-          include: [
-            {
-              model: Persona,
-              as: 'persona',
-              attributes: ['nombre', 'apellido', 'documento', 'telefono']
-            }
-          ]
-        },
-        {
-          model: Unidad,
-          as: 'unidades',
-          attributes: ['id', 'codigo', 'estado'],
-          separate: true // Para evitar duplicados en el count
-        }
-      ],
+      include: includes,
       limit: parseInt(limit),
       offset: offset,
       order: [[sortBy, sortOrder.toUpperCase()]],
-      distinct: true // Para que el count sea correcto
+      distinct: true, // Para que el count sea correcto
+      subQuery: false // Evita problemas con límites cuando se usan JOINs
     });
 
     // Calcular datos adicionales para cada consorcio
@@ -95,21 +124,20 @@ export const getConsorcios = async (req, res) => {
           group: ['estado']
         });
 
-        // Contar tickets pendientes (si la tabla existe)
-        // Comentado por ahora, descomentar cuando esté la tabla tickets
-        // const ticketsPendientes = await Ticket.count({
-        //   where: { 
-        //     consorcio_id: consorcio.id,
-        //     estado: { [Op.in]: ['abierto', 'en_proceso'] }
-        //   }
-        // });
+        // Contar tickets pendientes
+        const ticketsPendientes = await Ticket.count({
+          where: {
+            consorcio_id: consorcio.id,
+            estado: { [Op.in]: ['abierto', 'en_proceso', 'pendiente'] }
+          }
+        });
 
         return {
           ...consorcioData,
           stats: {
             totalUnidades: consorcio.unidades?.length || 0,
             unidadesOcupadas: consorcioData.unidades?.filter(u => u.estado === 'ocupado').length || 0,
-            // ticketsPendientes: ticketsPendientes || 0
+            ticketsPendientes: ticketsPendientes || 0
           }
         };
       })
