@@ -40,3 +40,27 @@ export const requireRole = (rolesPermitidos) => {
     next();
   };
 };
+
+/**
+ * Middleware para bloquear usuarios pendientes
+ * Los usuarios con rol 'usuario_pendiente' no pueden acceder a recursos protegidos
+ */
+export const requireApprovedUser = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'No autenticado'
+    });
+  }
+
+  // Bloquear usuarios con rol 'usuario_pendiente'
+  if (req.user.rol === 'usuario_pendiente') {
+    return res.status(403).json({
+      success: false,
+      message: 'Tu cuenta está pendiente de aprobación. Por favor espera a que un administrador la active y te asigne un rol.',
+      code: 'USER_PENDING_APPROVAL'
+    });
+  }
+
+  next();
+};

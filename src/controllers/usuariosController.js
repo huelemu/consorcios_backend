@@ -620,6 +620,7 @@ export const getUsuariosPendientes = async (req, res) => {
 export const aprobarUsuario = async (req, res) => {
   try {
     const { id } = req.params;
+    const { rol_global } = req.body; // Rol que se le asignará al usuario
 
     const usuario = await Usuario.findByPk(id, {
       include: [{
@@ -643,9 +644,25 @@ export const aprobarUsuario = async (req, res) => {
       });
     }
 
-    // Aprobar y activar el usuario
+    // Validar rol si se proporciona
+    const rolesPermitidos = ['inquilino', 'propietario', 'admin_edificio', 'admin_consorcio', 'proveedor'];
+    if (rol_global && !rolesPermitidos.includes(rol_global)) {
+      return res.status(400).json({
+        success: false,
+        message: `Rol no permitido. Roles válidos: ${rolesPermitidos.join(', ')}`
+      });
+    }
+
+    // Aprobar, activar el usuario y asignar rol
     usuario.aprobado = true;
     usuario.activo = true;
+
+    // Si se proporciona un rol, asignarlo; de lo contrario, mantener 'usuario_pendiente'
+    // (el admin deberá asignar el rol manualmente después)
+    if (rol_global) {
+      usuario.rol_global = rol_global;
+    }
+
     await usuario.save();
 
     // Enviar email de aprobación (opcional)

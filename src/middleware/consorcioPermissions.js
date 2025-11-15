@@ -1,4 +1,4 @@
-import { Consorcio } from '../models/index.js';
+import { Consorcio, UsuarioRol, Unidad } from '../models/index.js';
 
 /**
  * =========================================
@@ -6,6 +6,46 @@ import { Consorcio } from '../models/index.js';
  * =========================================
  * Valida que el usuario tenga permisos para operar sobre un consorcio específico
  */
+
+/**
+ * Helper: Obtener IDs de consorcios a los que el usuario tiene acceso
+ */
+async function getConsorciosIdsForUser(userId) {
+  const asignaciones = await UsuarioRol.findAll({
+    where: {
+      usuario_id: userId,
+      activo: true
+    },
+    attributes: ['consorcio_id', 'unidad_id']
+  });
+
+  const consorcioIds = new Set();
+
+  for (const asignacion of asignaciones) {
+    // Si tiene asignación directa a un consorcio
+    if (asignacion.consorcio_id) {
+      consorcioIds.add(asignacion.consorcio_id);
+    }
+
+    // Si tiene asignación a una unidad, obtener el consorcio de esa unidad
+    if (asignacion.unidad_id) {
+      const unidad = await Unidad.findByPk(asignacion.unidad_id);
+      if (unidad && unidad.consorcio_id) {
+        consorcioIds.add(unidad.consorcio_id);
+      }
+    }
+  }
+
+  return Array.from(consorcioIds);
+}
+
+/**
+ * Helper: Verificar si el usuario tiene acceso a un consorcio específico
+ */
+async function userHasAccessToConsorcio(userId, consorcioId) {
+  const consorcioIds = await getConsorciosIdsForUser(userId);
+  return consorcioIds.includes(parseInt(consorcioId));
+}
 
 /**
  * Verifica si el usuario puede acceder a un consorcio específico
@@ -60,13 +100,23 @@ export const canAccessConsorcio = async (req, res, next) => {
     }
 
     // Admin edificio, propietarios e inquilinos
-    // TODO: Validar que pertenecen al consorcio mediante la tabla usuarios_roles
-    // Por ahora, permitir acceso de lectura
+    // Validar que pertenecen al consorcio mediante la tabla usuarios_roles
     if (['admin_edificio', 'propietario', 'inquilino'].includes(user.rol)) {
+      const hasAccess = await userHasAccessToConsorcio(user.id, id);
+
+      if (!hasAccess) {
+        return res.status(403).json({
+          message: 'No tienes permisos para acceder a este consorcio',
+          code: 'FORBIDDEN'
+        });
+      }
+
+      // Solo permiten lectura (GET)
       if (req.method === 'GET') {
         return next();
       }
-      return res.status(403).json({ 
+
+      return res.status(403).json({
         message: 'No tienes permisos para modificar este consorcio',
         code: 'FORBIDDEN'
       });
@@ -184,7 +234,7 @@ export const canDeleteConsorcio = async (req, res, next) => {
  * Filtro para listar solo consorcios accesibles por el usuario
  * Modifica req.query agregando filtros según el rol
  */
-export const filterConsorciosByUserAccess = (req, res, next) => {
+export const filterConsorciosByUserAccess = async (req, res, next) => {
   try {
     const user = req.user;
 
@@ -210,9 +260,20 @@ export const filterConsorciosByUserAccess = (req, res, next) => {
     }
 
     // Admin edificio, propietarios e inquilinos
-    // TODO: Filtrar por consorcios asociados en usuarios_roles
-    // Por ahora, no aplicar filtro adicional
-    
+    // Filtrar por consorcios asociados en usuarios_roles
+    if (['admin_edificio', 'propietario', 'inquilino'].includes(user.rol)) {
+      const consorcioIds = await getConsorciosIdsForUser(user.id);
+
+      // Si no tiene ningún consorcio asignado, no mostrar nada
+      if (consorcioIds.length === 0) {
+        req.consorcioFilter = { id: -1 }; // ID imposible para que no retorne resultados
+      } else {
+        req.consorcioFilter = { id: consorcioIds }; // Filtrar por IDs asignados
+      }
+
+      return next();
+    }
+
     next();
 
   } catch (error) {

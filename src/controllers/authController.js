@@ -108,7 +108,7 @@ export const register = async (req, res) => {
       username: username || email.split('@')[0], // Si no hay username, usar parte del email
       email,
       password: hashedPassword,
-      rol_global: 'inquilino', // Rol por defecto
+      rol_global: 'usuario_pendiente', // Rol por defecto - sin permisos hasta aprobación
       oauth_provider: 'local',
       activo: false, // Inactivo hasta que el admin lo active
       aprobado: false, // Requiere aprobación del administrador
@@ -345,7 +345,7 @@ export const googleLogin = async (req, res) => {
         password: null, // No tiene password porque usa OAuth
         google_id: googleUser.sub,
         oauth_provider: 'google',
-        rol_global: 'inquilino',
+        rol_global: 'usuario_pendiente', // Rol por defecto - sin permisos hasta aprobación
         activo: false, // Inactivo hasta que el admin lo active
         aprobado: false, // Requiere aprobación del administrador
         email_verificado: true, // Google ya verificó el email
