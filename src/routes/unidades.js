@@ -9,18 +9,22 @@ import {
   getUnidadesStats
 } from '../controllers/unidadesController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import {
+  filterUnidadesByUserAccess,
+  canAccessUnidad
+} from '../middleware/unidadPermissions.js';
 
 const router = Router();
 
 // Rutas específicas primero (antes de /:id)
-router.get('/stats', getUnidadesStats);
+router.get('/stats', filterUnidadesByUserAccess, getUnidadesStats);
 
 // Rutas generales
-router.get('/', getUnidades);
-router.get('/:id', getUnidadById);
+router.get('/', filterUnidadesByUserAccess, getUnidades);
+router.get('/:id', canAccessUnidad, getUnidadById);
 router.post('/', createUnidad);
-router.put('/:id', updateUnidad);
-router.delete('/:id', deleteUnidad);
+router.put('/:id', canAccessUnidad, updateUnidad);
+router.delete('/:id', canAccessUnidad, deleteUnidad);
 
 router.post('/bulk-create', authenticateToken, async (req, res) => {
   const { consorcio_id, cantidad, prefijo, tipo, estado } = req.body;

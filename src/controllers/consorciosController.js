@@ -31,6 +31,11 @@ export const getConsorcios = async (req, res) => {
     // Construir filtros dinámicos
     const whereClause = {};
 
+    // Aplicar filtro de permisos de usuario (viene del middleware)
+    if (req.consorcioFilter) {
+      Object.assign(whereClause, req.consorcioFilter);
+    }
+
     if (search) {
       whereClause[Op.or] = [
         { nombre: { [Op.like]: `%${search}%` } },

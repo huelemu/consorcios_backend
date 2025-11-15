@@ -39,9 +39,10 @@ export const Usuario = sequelize.define('Usuario', {
       'admin_edificio',
       'proveedor',
       'propietario',
-      'inquilino'
+      'inquilino',
+      'usuario_pendiente'
     ),
-    defaultValue: 'inquilino'
+    defaultValue: 'usuario_pendiente'
   },
   activo: {
     type: DataTypes.BOOLEAN,

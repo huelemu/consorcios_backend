@@ -22,6 +22,11 @@ export const getUnidades = async (req, res) => {
     // Construir filtros
     const where = {};
 
+    // Aplicar filtro de permisos de usuario (viene del middleware)
+    if (req.unidadFilter) {
+      Object.assign(where, req.unidadFilter);
+    }
+
     // Búsqueda por código o piso
     if (search) {
       where[Op.or] = [

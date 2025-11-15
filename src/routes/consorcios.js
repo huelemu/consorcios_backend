@@ -13,6 +13,13 @@ import {
   uploadConsorciosExcel
 } from '../controllers/consorciosController.js';
 
+import {
+  filterConsorciosByUserAccess,
+  canAccessConsorcio,
+  canModifyConsorcio,
+  canDeleteConsorcio
+} from '../middleware/consorcioPermissions.js';
+
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
@@ -30,7 +37,7 @@ const upload = multer({ dest: 'uploads/' });
  *     summary: Lista todos los consorcios con filtros y paginación
  *     tags: [Consorcios]
  */
-router.get('/', getConsorcios);
+router.get('/', filterConsorciosByUserAccess, getConsorcios);
 
 /**
  * @swagger
@@ -39,7 +46,7 @@ router.get('/', getConsorcios);
  *     summary: Obtiene estadísticas generales de consorcios
  *     tags: [Consorcios]
  */
-router.get('/stats/general', getConsorciosStats);
+router.get('/stats/general', filterConsorciosByUserAccess, getConsorciosStats);
 
 /**
  * @swagger
@@ -48,7 +55,7 @@ router.get('/stats/general', getConsorciosStats);
  *     summary: Obtiene un consorcio por ID
  *     tags: [Consorcios]
  */
-router.get('/:id', getConsorcioById);
+router.get('/:id', canAccessConsorcio, getConsorcioById);
 
 /**
  * @swagger
@@ -66,7 +73,7 @@ router.post('/', createConsorcio);
  *     summary: Actualiza un consorcio existente
  *     tags: [Consorcios]
  */
-router.put('/:id', updateConsorcio);
+router.put('/:id', canModifyConsorcio, updateConsorcio);
 
 /**
  * @swagger
@@ -75,7 +82,7 @@ router.put('/:id', updateConsorcio);
  *     summary: Elimina (desactiva) un consorcio
  *     tags: [Consorcios]
  */
-router.delete('/:id', deleteConsorcio);
+router.delete('/:id', canDeleteConsorcio, deleteConsorcio);
 
 /**
  * @swagger
@@ -84,7 +91,7 @@ router.delete('/:id', deleteConsorcio);
  *     summary: Activa un consorcio
  *     tags: [Consorcios]
  */
-router.patch('/:id/activar', activarConsorcio);
+router.patch('/:id/activar', canModifyConsorcio, activarConsorcio);
 
 /**
  * @swagger
@@ -93,7 +100,7 @@ router.patch('/:id/activar', activarConsorcio);
  *     summary: Desactiva un consorcio
  *     tags: [Consorcios]
  */
-router.patch('/:id/desactivar', desactivarConsorcio);
+router.patch('/:id/desactivar', canModifyConsorcio, desactivarConsorcio);
 
 router.post('/upload-excel', upload.single('file'), uploadConsorciosExcel);
 

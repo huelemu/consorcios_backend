@@ -31,6 +31,9 @@ import expensasRoutes from './routes/expensas.js';
 import personasRoutes from './routes/personas.js';
 import usuariosRoutes from './routes/usuarios.js';
 
+// Middleware de autenticación
+import { authenticateToken, requireApprovedUser } from './middleware/authMiddleware.js';
+
 dotenv.config();
 const app = express();
 
@@ -72,15 +75,18 @@ setupSwagger(app);
 // ================================
 // Rutas
 // ================================
+// Rutas públicas (sin autenticación)
 app.use('/auth', authRoutes);
-app.use('/personas', personasRoutes);
-app.use('/usuarios', usuariosRoutes);
-app.use('/consorcios', consorciosRoutes);
-app.use('/unidades', unidadesRoutes);
-app.use('/tickets', ticketsRoutes);
-app.use('/proveedores', proveedoresRoutes);
-app.use('/expensas', expensasRoutes);
-app.use('/dashboard', dashboardRoutes);
+
+// Rutas protegidas (requieren autenticación y usuario aprobado)
+app.use('/personas', authenticateToken, requireApprovedUser, personasRoutes);
+app.use('/usuarios', authenticateToken, requireApprovedUser, usuariosRoutes);
+app.use('/consorcios', authenticateToken, requireApprovedUser, consorciosRoutes);
+app.use('/unidades', authenticateToken, requireApprovedUser, unidadesRoutes);
+app.use('/tickets', authenticateToken, requireApprovedUser, ticketsRoutes);
+app.use('/proveedores', authenticateToken, requireApprovedUser, proveedoresRoutes);
+app.use('/expensas', authenticateToken, requireApprovedUser, expensasRoutes);
+app.use('/dashboard', authenticateToken, requireApprovedUser, dashboardRoutes);
 
 app.use(errorHandler);
 
