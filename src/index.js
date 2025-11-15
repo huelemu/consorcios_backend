@@ -7,18 +7,20 @@ import { errorHandler } from './middleware/errorHandler.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 // ⚠️ IMPORTANTE: Importar TODO el models/index.js ANTES de las rutas
-import { 
-  sequelize, 
-  Consorcio, 
-  Unidad, 
-  Usuario, 
+import {
+  sequelize,
+  Consorcio,
+  Unidad,
+  Usuario,
   Persona,
   Proveedor,
   ConsorcioProveedor,
   Ticket,
   TicketComentario,
   TicketHistorial,
-  TicketAdjunto
+  TicketAdjunto,
+  Modulo,
+  RolModulo
 } from './models/index.js';
 
 // Rutas (DESPUÉS de los modelos)
@@ -30,6 +32,7 @@ import proveedoresRoutes from './routes/proveedores.js';
 import expensasRoutes from './routes/expensas.js';
 import personasRoutes from './routes/personas.js';
 import usuariosRoutes from './routes/usuarios.js';
+import modulosRoutes from './routes/modulos.js';
 
 // Middleware de autenticación
 import { authenticateToken, requireApprovedUser } from './middleware/authMiddleware.js';
@@ -87,6 +90,7 @@ app.use('/tickets', authenticateToken, requireApprovedUser, ticketsRoutes);
 app.use('/proveedores', authenticateToken, requireApprovedUser, proveedoresRoutes);
 app.use('/expensas', authenticateToken, requireApprovedUser, expensasRoutes);
 app.use('/dashboard', authenticateToken, requireApprovedUser, dashboardRoutes);
+app.use('/modulos', authenticateToken, requireApprovedUser, modulosRoutes);
 
 app.use(errorHandler);
 

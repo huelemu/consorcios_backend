@@ -13,6 +13,8 @@ import { ProveedorPersona } from './proveedorPersona.js';
 import { ProveedorCuentaBancaria } from './proveedorCuentaBancaria.js';
 import { Rol } from './rol.js';
 import { UsuarioRol } from './usuarioRol.js';
+import { Modulo } from './modulo.js';
+import { RolModulo } from './rolModulo.js';
 
 // ================================
 // ASOCIACIONES ENTRE MODELOS
@@ -140,6 +142,30 @@ Usuario.hasMany(UsuarioRol, { foreignKey: 'usuario_id', as: 'usuario_roles' });
 Rol.hasMany(UsuarioRol, { foreignKey: 'rol_id', as: 'rol_usuarios' });
 
 // ================================
+// 🆕 RELACIONES ROL ↔ MODULO (N:M)
+// ================================
+Rol.belongsToMany(Modulo, {
+  through: RolModulo,
+  foreignKey: 'rol_id',
+  otherKey: 'modulo_id',
+  as: 'modulos'
+});
+
+Modulo.belongsToMany(Rol, {
+  through: RolModulo,
+  foreignKey: 'modulo_id',
+  otherKey: 'rol_id',
+  as: 'roles'
+});
+
+// Relaciones directas con RolModulo
+RolModulo.belongsTo(Rol, { foreignKey: 'rol_id', as: 'rol' });
+RolModulo.belongsTo(Modulo, { foreignKey: 'modulo_id', as: 'modulo' });
+
+Rol.hasMany(RolModulo, { foreignKey: 'rol_id', as: 'rol_modulos' });
+Modulo.hasMany(RolModulo, { foreignKey: 'modulo_id', as: 'modulo_roles' });
+
+// ================================
 // EXPORTS
 // ================================
 export {
@@ -157,5 +183,7 @@ export {
   ProveedorPersona,
   ProveedorCuentaBancaria,
   Rol,
-  UsuarioRol
+  UsuarioRol,
+  Modulo,
+  RolModulo
 };
